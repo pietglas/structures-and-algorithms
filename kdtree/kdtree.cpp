@@ -49,6 +49,15 @@ KDTree<N, T>::KDTree(const KDTree & rhs) {
 }
 
 template<size_t N, typename T>
+KDTree<N, T> & KDTree<N, T>::operator = (const KDTree & rhs) {
+	if (this != rhs) {
+		KDTree<N, T>::erase(root_);
+		root_ = rhs.copyTree();
+	}
+	return this;
+}
+
+template<size_t N, typename T>
 Node * KDTree<N, T>::copy(Node * node) {
 	if (node != nullptr) {
 		Node * new_node = new Node(node->coordinates, node->data);
