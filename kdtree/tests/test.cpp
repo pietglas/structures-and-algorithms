@@ -16,6 +16,8 @@ protected:
 
 		twodtree2.add(twodcoords1, b2);
 		twodtree2 = twodtree;
+
+		threedtree2[threedcoords2] = v2;
 	}
 
 	KDTree<2, std::string> twodtree;
@@ -35,6 +37,7 @@ protected:
 	std::string v3 = "eagle";
 
 	KDTree<2, std::string> twodtree2;
+	KDTree<3, std::string> threedtree2;
 };
 
 TEST_F(KDTreeTest, AddWorks) {
@@ -61,5 +64,10 @@ TEST_F(KDTreeTest, CopyWorks) {
 	EXPECT_EQ(twodtree2.contains(b1), true);
 	EXPECT_EQ(twodtree2.contains(b2), true);
 	EXPECT_EQ(twodtree2.contains(b3), true);
+}
+
+TEST_F(KDTreeTest, AccessWorks) {
+	EXPECT_EQ(twodtree[twodcoords2], b2);
+	EXPECT_EQ(threedtree2[threedcoords2], v2);
 }
 

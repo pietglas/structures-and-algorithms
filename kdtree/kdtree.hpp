@@ -9,6 +9,7 @@ template<size_t N, typename T>
 class KDTree {
 
 	struct Node {
+		Node(std::array<double, N> coordinates) : coordinates{coordinates} {}
 		Node(std::array<double, N> coordinates, T data) : coordinates{coordinates},
 			data{data} {}
 		std::array<double, N> coordinates;
@@ -21,8 +22,8 @@ public:
 	KDTree();
 	~KDTree();
 
-	KDTree(const KDTree & rhs);
-	KDTree & operator =(const KDTree & rhs);
+	KDTree(const KDTree& rhs);
+	KDTree & operator =(const KDTree& rhs);
 
 	size_t size() const;
 	bool empty() const; 
@@ -30,11 +31,11 @@ public:
 	// add data at a point. In case where the three already stores
 	// data at the point, it does nothing and returns false. 
 	bool add(std::array<double, N> coords, T data);
-	bool contains(const T & data) const;
+	bool contains(const T& data) const;
 	void print() const;
 
-	// returns a reference to the data at the point
-	T & data operator [](std::array<double, N> coords);
+	// access or insert data
+	T& operator [](const std::array<double, N>& coords);
 
 private:
 	Node * root_;
@@ -45,8 +46,9 @@ private:
 	Node * copy(Node * node) const;		// copies subtree with node as root
 	bool addHelper(std::array<double, N> coords, T data, 
 		Node *& node, int height);
-	bool containsHelper(const T & data, Node * node) const;
+	bool containsHelper(const T& data, Node * node) const;
 	void printHelper(Node * node) const;
+	T& bracketHelper(const std::array<double, N>& coords, Node *& node, int height);
 };
 
 template<size_t N, typename T>
@@ -124,8 +126,8 @@ void KDTree<N, T>::print() const {
 }
 
 template<size_t N, typename T>
-T & data KDTree<N, T>::operator [](std::array<double, N> coords) {
-
+T& KDTree<N, T>::operator [](const std::array<double, N>& coords) {
+	return bracketHelper(coords, root_, 0);
 }
 
 template<size_t N, typename T>
@@ -147,22 +149,18 @@ bool KDTree<N, T>::addHelper(std::array<double, N> coords, T data,
 			height_ = height;
 		return true;
 	}
-	else {
-		size_t index = height % N;
-		if (coords == node->coordinates)
-			return false;
-		else {
-			if (coords[index] < node->coordinates[index])
-				return addHelper(coords, data, 
-							node->left, height + 1);
-			return addHelper(coords, data, 
-						node->right, height + 1);
-		}
-	}
+	size_t index = height % N;
+	if (coords == node->coordinates)
+		return false;
+	if (coords[index] < node->coordinates[index])
+		return addHelper(coords, data, 
+					node->left, height + 1);
+	return addHelper(coords, data, 
+				node->right, height + 1);
 }
 
 template<size_t N, typename T>
-bool KDTree<N, T>::containsHelper(const T & data, Node * node) const {
+bool KDTree<N, T>::containsHelper(const T& data, Node * node) const {
 	if (node != nullptr) {
 		if (node->data != data) 
 			return std::max(containsHelper(data, node->left), 
@@ -182,13 +180,18 @@ void KDTree<N, T>::printHelper(Node * node) const {
 }
 
 template<size_t N, typename T>
-T & KDTree<N, T>::bracketHelper(std::array<double, N> coords, Node * node,
-		bool found) {
-	if (node->coordinates == coords)
-		return node->data;
-	else {
-		T data = 
+T& KDTree<N, T>::bracketHelper(const std::array<double, N>& coords, Node *& node,
+		int height) {
+	if (node != nullptr) {
+		if (node->coordinates == coords)
+			return node->data;
+		size_t index = height % N;
+		if (coords[index] < node->coordinates[index])
+			return bracketHelper(coords, node->left, height + 1);
+		return bracketHelper(coords, node->right, height + 1);
 	}
+	node = new Node(coords);
+	return node->data;
 }
 
 
