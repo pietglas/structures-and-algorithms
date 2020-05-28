@@ -9,6 +9,8 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
+add_executable(main main.cpp)
+
 # enable testing 
 enable_testing()
 add_subdirectory(tests)
