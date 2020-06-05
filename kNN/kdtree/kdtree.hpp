@@ -1,8 +1,10 @@
 #pragma once
 
 #include <array>
-#include <cmath>
+#include <cmath>	// std::max, std::sqrt, 
 #include <iostream>
+#include <vector>
+#include "../bounded-extrinsic-pq/bounded_extrinsic_pq.hpp"
 
 
 template<size_t N, typename T>
@@ -37,18 +39,32 @@ public:
 	// access or insert data
 	T& operator [](const std::array<double, N>& coords);
 
+	// k-nearest neighbor algorithm. Returns a vector with the specified
+	// number of neighbors (or less, if the specified number is larger than
+	// the number of data points).
+	std::vector<T> kNN(const std::array<double, N>& coords, T item
+			int nr_neighbors);
+
 private:
 	Node * root_;
 	size_t size_;
 	int height_;
+
+	Node * copy(Node * node) const;		// copies subtree with node as root
 	Node * copyTree() const;	// copies the whole tree
 	void erase(Node * node);	// erases node and all its children
-	Node * copy(Node * node) const;		// copies subtree with node as root
+	
 	bool addHelper(std::array<double, N> coords, T data, 
 		Node *& node, int height);
 	bool containsHelper(const T& data, Node * node) const;
 	void printHelper(Node * node) const;
 	T& bracketHelper(const std::array<double, N>& coords, Node *& node, int height);
+
+	double distance(const std::array<double, N>& coords0, 
+		const std::array<double, N>& coords1);
+
+	void kNNHelper(const std::array<double, N>& coords,
+		BoundedExtrinsicPQ<T, minpq>& neighbors, Node * node, int height);
 };
 
 template<size_t N, typename T>
@@ -131,6 +147,55 @@ T& KDTree<N, T>::operator [](const std::array<double, N>& coords) {
 }
 
 template<size_t N, typename T>
+std::vector<T> KDTree<N, T>::kNN(const std::array<double, N>& coords, 
+		T item, int nr_neighbors) {
+	// max priority queue containing the temporary neighbors
+	BoundedExtrinsicPQ<T, false> neighbors{nr_neighbors};
+	// call helper function that does the actual work
+	kNNHelper(coords, neighbors, root_, 0);
+	// return a sorted vector with the neighbors, starting with the 
+	// closest neighbor (which is the last element to be removed from
+	// our max pq)
+	std::vector<T> neighbors_sorted;
+	neighbors_sorted.resize(neighbors.size());
+	for (int i = 0; i != neighbors.size(); i++)
+		neighbors_sorted.at(neighbors.size() - i - 1) = neighbors.pop();
+	return neighbors_sorted;
+}
+
+void KDTree<N, T>::kNNHelper(const std::array<double, N>& coords,
+		BoundedExtrinsicPQ<T, minpq>& neighbors, Node * node, int height) {
+	if (node != nullptr) {
+		int index = height % N;
+		double distance_node = distance(node->coordinates, coords);
+		// add data current node to the priority queue, if is closer
+		// than the current most far away selected neighbor, or if
+		// the max capacity of the pq hasn't been reached
+		if (distance_node < neighbors.topPriority() || 
+				neighbors.size() < neighbors.bound())
+			neighbors.push(root_->data, distance_node);
+		// determine which of the children is more promosing wrt distance
+		Node * promosing_node = node->right;
+		Node * other_node = node->left;
+		if (coords[index] < node->coordinates[index]) {	// swap if needed
+			promosing_node = node->left;
+			other_node = node->right;
+		}
+		kNNHelper(coords, neighbors, promosing_node, height + 1);
+		// check for possible closer values in the other direction
+		std::array<double N> closest_point_rs = coords;
+		closest_point_rs[index] = node->coordinates[index];
+		// the following calculation is actually redundant in the current
+		// approach, as only one index differs
+		double closest_distance_rs = distance(closest_point_rs, coords);
+		if (closest_distance_rs < neighbors.topPriority())
+			kNNHelper(coords, neighbors, other_node, height + 1);
+	}
+}
+
+
+
+template<size_t N, typename T>
 void KDTree<N, T>::erase(Node * node) {
 	if (node != nullptr) {
 		erase(node->left);
@@ -192,6 +257,17 @@ T& KDTree<N, T>::bracketHelper(const std::array<double, N>& coords, Node *& node
 	}
 	node = new Node(coords);
 	return node->data;
+}
+
+template<size_t N, typename T>
+double KDTree<N, T>::distance(const std::array<double, N>& coords0, 
+		const std::array<double, N>& coords1) {
+	double sum = 0;
+	for (int i = 0; i != N; i++) {
+		double summand = pow(coords0[i] - coords1[i], 2);
+		sum += summand;
+	}
+	return std::sqrt(sum);
 }
 
 

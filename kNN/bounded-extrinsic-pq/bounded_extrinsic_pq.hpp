@@ -4,6 +4,7 @@
 
 template <typename T, bool minpq>
 class BoundedExtrinsicPQ {
+	
 	struct PriorityNode {
 		PriorityNode() {};
 		PriorityNode(T data, double priority) : data{data}, priority{priority} {}
@@ -20,8 +21,10 @@ public:
 
 	// accessors
 	T& top() const;
+	double& topPriority() const;
 	bool empty() const;
 	int size() const;
+	int bound() const;
 
 	// modifiers
 	void push(T item, double priority);
@@ -76,13 +79,27 @@ BoundedExtrinsicPQ<T, minpq>&
 }
 
 template <typename T, bool minpq>
-T& BoundedExtrinsicPQ<T, minpq>::top() const {return heap_[0].data;}
+T& BoundedExtrinsicPQ<T, minpq>::top() const {
+	if (empty())
+		throw std::out_of_range("pq is empty");
+	return heap_[0].data;
+}
 
 template <typename T, bool minpq>
-bool BoundedExtrinsicPQ<T, minpq>::empty() const{return size_ == 0;}
+double& topPriority() const {
+	if (empty())
+		return -1;
+	return heap_[0].priority;
+}
+
+template <typename T, bool minpq>
+bool BoundedExtrinsicPQ<T, minpq>::empty() const {return size_ == 0;}
 
 template <typename T, bool minpq>
 int BoundedExtrinsicPQ<T, minpq>::size() const {return size_;}
+
+template <typename T, bool minpq>
+int BoundedExtrinsicPQ<T, minpq>::bound() const {return bound_;}
 
 template <typename T, bool minpq>
 void BoundedExtrinsicPQ<T, minpq>::push(T item, double priority) {
