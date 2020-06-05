@@ -2,6 +2,15 @@
 
 #include <stdexcept>
 
+/* Implementation of a priority queue based on a heap, with
+ * bounded size. Depending on whether the template argument `minpq`
+ * is set to true or false, respectively a minimum priority queue or
+ * a maximum priority queue is obtained. In the constructor one needs to
+ * specify the maximum size of the pq. I mimicked the functionality
+ * as well as the function names of the STL-implementation. Additionally,
+ * there is a topPriority() function, returning the priority of the
+ * element at the front of the queue. 
+ */
 template <typename T, bool minpq>
 class BoundedExtrinsicPQ {
 	
@@ -20,15 +29,23 @@ public:
 	BoundedExtrinsicPQ& operator =(const BoundedExtrinsicPQ& rhs);
 
 	// accessors
-	T& top() const;
-	double& topPriority() const;
+	/** returns front element. throws std::out_of_range if the pq is 
+	empty */ 
+	T& top() const;	
+	/** returns priority of the front element. Returns -1 if the pq is
+	empty, the main reason being that this is convenient in our 
+	application of the kNN algorithm */
+	double& topPriority() const;	
 	bool empty() const;
 	int size() const;
-	int bound() const;
+	int bound() const;	// the max size, as specified in the constructor
 
 	// modifiers
-	void push(T item, double priority);
-	T pop();
+	/** adds an element to the pq */
+	void push(T item, double priority);	
+	/** removes the front element of the pq, returns its value. Throws
+	std::out_of_range of the pq is empty */
+	T pop();	
 
 private:
 	PriorityNode * heap_ = nullptr;
@@ -36,9 +53,9 @@ private:
 	int silent_size_ = 8;
 	int bound_;
 
-	void pushUp(int pos);
-	void pushDown(int pos);
-	void swap(int pos_1, int pos_2);
+	void pushUp(int pos);	// heapify up
+	void pushDown(int pos);	// heapify down 
+	void swap(int pos_1, int pos_2);	// standard swap function
 	bool compare(double priority_1, double priority_2);
 	void resize(bool up=true);
 };

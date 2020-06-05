@@ -1,3 +1,8 @@
+/* TODO:
+ * - construct a kdtree from a set of data, instead of having the 
+ *   user add each individual point manually
+ */
+
 #pragma once
 
 #include <array>
@@ -6,7 +11,13 @@
 #include <vector>
 #include "../bounded-extrinsic-pq/bounded_extrinsic_pq.hpp"
 
-
+/* Implementation of a kdtree. The dimension as well as the data type
+ * are to be specified as template arguments. It contains some standard
+ * functionality such as adding an element and checking if an element is 
+ * in the tree. 
+ * It also contains an implementation of a kNN search (see kNN), 
+ * an algorithm to find the k nearest neighbors of a given point. 
+ */
 template<size_t N, typename T>
 class KDTree {
 private:
@@ -30,18 +41,18 @@ public:
 	size_t size() const;
 	bool empty() const; 
 	int height() const;
-	// add data at a point. In case where the three already stores
-	// data at the point, it does nothing and returns false. 
+	/** add data at a point. In case where the three already stores
+	    data at the point, it does nothing and returns false. */
 	bool add(std::array<double, N> coords, T data);
 	bool contains(const T& data) const;
 	void print() const;
 
-	// access or insert data
+	/** access or insert data */
 	T& operator [](const std::array<double, N>& coords);
 
-	// k-nearest neighbor algorithm. Returns a vector with the specified
-	// number of neighbors (or less, if the specified number is larger than
-	// the number of data points).
+	/** k-nearest neighbor algorithm. Returns a vector with the specified
+	    number of neighbors (or less, if the specified number is larger than
+	    the number of data points). */
 	std::vector<T> kNN(const std::array<double, N>& coords, T item
 			int nr_neighbors);
 
@@ -192,8 +203,6 @@ void KDTree<N, T>::kNNHelper(const std::array<double, N>& coords,
 			kNNHelper(coords, neighbors, other_node, height + 1);
 	}
 }
-
-
 
 template<size_t N, typename T>
 void KDTree<N, T>::erase(Node * node) {
