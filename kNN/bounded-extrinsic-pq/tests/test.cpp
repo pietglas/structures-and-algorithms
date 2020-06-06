@@ -14,11 +14,14 @@ protected:
 		pq1.push(str1, 1);
 		pq1.push(str2, 1.5);
 
+		pq4.push(str0, 1);
+		pq4.push(str1, 2);
+
 		pq2 = pq1;
 
 		for (int i = 0; i != 15; i++)
 			pq3.push(i, i);
-		for (int i = 0; i != 11; i ++)
+		for (int i = 0; i != 11; i++)
 			pq3.pop();
 	}
 
@@ -26,6 +29,7 @@ protected:
 	BoundedExtrinsicPQ<std::string, false> pq1{3};
 	BoundedExtrinsicPQ<std::string, false> pq2{3};
 	BoundedExtrinsicPQ<int, true> pq3{12};
+	BoundedExtrinsicPQ<std::string, false> pq4{1};
 	std::string str0 = "plato";
 	std::string str1 = "aristotle";
 	std::string str2 = "kant";
@@ -36,6 +40,8 @@ TEST_F(BoundedExtrinsicPQTest, AddWorks) {
 	EXPECT_EQ(pq1.size(), 3);
 	EXPECT_EQ(pq0.size(), 4);
 	EXPECT_EQ(pq0.top(), str2);
+	EXPECT_EQ(pq4.size(), 1);
+	EXPECT_EQ(pq4.top(), str0);
 }
 
 TEST_F(BoundedExtrinsicPQTest, CopyWorks) {

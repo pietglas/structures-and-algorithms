@@ -19,4 +19,15 @@ int main() {
 	KDTree<2, std::string> twodtree2 = twodtree;
 
 	twodtree2.print();
+
+	std::array<double, 2> point0 = {-2, 1};
+	std::array<double, 2> point1 = {2, 0};
+
+	std::vector<std::string> knn0 = twodtree.kNN(point0, "building4", 1);
+	std::vector<std::string> knn1 = twodtree.kNN(point1, "building5", 2);
+
+	for (auto i : knn0)
+		std::cout << "element " << i << ": " << i << std::endl;
+	for (auto i : knn1)
+		std::cout << "element " << i << ": " << i << std::endl;
 }

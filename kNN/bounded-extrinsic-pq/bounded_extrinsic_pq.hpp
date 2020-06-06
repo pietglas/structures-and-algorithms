@@ -35,7 +35,7 @@ public:
 	/** returns priority of the front element. Returns -1 if the pq is
 	empty, the main reason being that this is convenient in our 
 	application of the kNN algorithm */
-	double& topPriority() const;	
+	double topPriority() const;	
 	bool empty() const;
 	int size() const;
 	int bound() const;	// the max size, as specified in the constructor
@@ -103,7 +103,7 @@ T& BoundedExtrinsicPQ<T, minpq>::top() const {
 }
 
 template <typename T, bool minpq>
-double& topPriority() const {
+double BoundedExtrinsicPQ<T, minpq>::topPriority() const {
 	if (empty())
 		return -1;
 	return heap_[0].priority;
@@ -124,9 +124,9 @@ void BoundedExtrinsicPQ<T, minpq>::push(T item, double priority) {
 		resize();
 	heap_[size_] = PriorityNode(item, priority);
 	pushUp(size_);
-	if (size_ == bound_)
+	size_++;
+	if (size_ > bound_)
 		pop();
-	++size_;
 }
 
 template <typename T, bool minpq>
@@ -137,7 +137,7 @@ T BoundedExtrinsicPQ<T, minpq>::pop() {
 	size_--;
 	swap(0, size_);
 	pushDown(0);
-	if (size_ < (silent_size_ / 4))
+	if (size_ < (silent_size_ / 4) && !empty())
 		resize(false);
 	return data;
 }

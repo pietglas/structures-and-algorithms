@@ -53,7 +53,7 @@ public:
 	/** k-nearest neighbor algorithm. Returns a vector with the specified
 	    number of neighbors (or less, if the specified number is larger than
 	    the number of data points). */
-	std::vector<T> kNN(const std::array<double, N>& coords, T item
+	std::vector<T> kNN(const std::array<double, N>& coords, T item,
 			int nr_neighbors);
 
 private:
@@ -75,7 +75,7 @@ private:
 		const std::array<double, N>& coords1);
 
 	void kNNHelper(const std::array<double, N>& coords,
-		BoundedExtrinsicPQ<T, minpq>& neighbors, Node * node, int height);
+		BoundedExtrinsicPQ<T, false>& neighbors, Node * node, int height);
 };
 
 template<size_t N, typename T>
@@ -158,8 +158,8 @@ T& KDTree<N, T>::operator [](const std::array<double, N>& coords) {
 }
 
 template<size_t N, typename T>
-std::vector<T> KDTree<N, T>::kNN(const std::array<double, N>& coords, 
-		T item, int nr_neighbors) {
+std::vector<T> KDTree<N, T>::kNN(const std::array<double, N>& coords, T item,
+			int nr_neighbors) {
 	// max priority queue containing the temporary neighbors
 	BoundedExtrinsicPQ<T, false> neighbors{nr_neighbors};
 	// call helper function that does the actual work
@@ -168,14 +168,16 @@ std::vector<T> KDTree<N, T>::kNN(const std::array<double, N>& coords,
 	// closest neighbor (which is the last element to be removed from
 	// our max pq)
 	std::vector<T> neighbors_sorted;
-	neighbors_sorted.resize(neighbors.size());
-	for (int i = 0; i != neighbors.size(); i++)
-		neighbors_sorted.at(neighbors.size() - i - 1) = neighbors.pop();
+	neighbors_sorted.reserve(neighbors.size());
+	nr_neighbors = neighbors.size();
+	for (int i = 0; i != nr_neighbors; i++)
+		neighbors_sorted.push_back(neighbors.pop());
 	return neighbors_sorted;
 }
 
+template<size_t N, typename T>
 void KDTree<N, T>::kNNHelper(const std::array<double, N>& coords,
-		BoundedExtrinsicPQ<T, minpq>& neighbors, Node * node, int height) {
+		BoundedExtrinsicPQ<T, false>& neighbors, Node * node, int height) {
 	if (node != nullptr) {
 		int index = height % N;
 		double distance_node = distance(node->coordinates, coords);
@@ -184,7 +186,7 @@ void KDTree<N, T>::kNNHelper(const std::array<double, N>& coords,
 		// the max capacity of the pq hasn't been reached
 		if (distance_node < neighbors.topPriority() || 
 				neighbors.size() < neighbors.bound())
-			neighbors.push(root_->data, distance_node);
+			neighbors.push(node->data, distance_node);
 		// determine which of the children is more promosing wrt distance
 		Node * promosing_node = node->right;
 		Node * other_node = node->left;
@@ -194,12 +196,13 @@ void KDTree<N, T>::kNNHelper(const std::array<double, N>& coords,
 		}
 		kNNHelper(coords, neighbors, promosing_node, height + 1);
 		// check for possible closer values in the other direction
-		std::array<double N> closest_point_rs = coords;
+		std::array<double, N> closest_point_rs = coords;
 		closest_point_rs[index] = node->coordinates[index];
 		// the following calculation is actually redundant in the current
 		// approach, as only one index differs
 		double closest_distance_rs = distance(closest_point_rs, coords);
-		if (closest_distance_rs < neighbors.topPriority())
+		if (closest_distance_rs < neighbors.topPriority() || 
+				neighbors.size() < neighbors.bound())
 			kNNHelper(coords, neighbors, other_node, height + 1);
 	}
 }

@@ -1,6 +1,7 @@
 #include "../kdtree.hpp"
 #include <string>
 #include <array>
+#include <vector>
 #include <gtest/gtest.h>
 
 class KDTreeTest : public ::testing::Test {
@@ -27,6 +28,11 @@ protected:
 	std::string b1 = "building1";
 	std::string b2 = "building2";
 	std::string b3 = "building3";
+	std::array<double, 2> point0 = {-2, 1};
+	std::array<double, 2> point1 = {2, 0};
+	std::vector<std::string> knn0 = {b2};
+	std::vector<std::string> knn1 = {b1, b3};
+
 
 	KDTree<3, std::string> threedtree;
 	std::array<double, 3> threedcoords1 = {0, 0, 0};
@@ -69,5 +75,10 @@ TEST_F(KDTreeTest, CopyWorks) {
 TEST_F(KDTreeTest, AccessWorks) {
 	EXPECT_EQ(twodtree[twodcoords2], b2);
 	EXPECT_EQ(threedtree2[threedcoords2], v2);
+}
+
+TEST_F(KDTreeTest, kNNWorks) {
+	EXPECT_EQ(twodtree.kNN(point0, "raven", 1), knn0);
+	EXPECT_EQ(twodtree.kNN(point1, "crow", 2), knn1);
 }
 
