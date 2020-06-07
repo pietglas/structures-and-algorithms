@@ -34,6 +34,8 @@ public:
 	KDTree(const KDTree& rhs);
 	KDTree & operator =(const KDTree& rhs);
 
+	/** Constructs a kdtree from a collection (std::map) of data, such that 
+		the keys are coordinates, and the values are the labels */
 	KDTree(const std::map<std::array<double, N>, T>& data);
 
 	size_t size() const;
