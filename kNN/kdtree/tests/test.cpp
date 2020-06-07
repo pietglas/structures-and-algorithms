@@ -2,6 +2,7 @@
 #include <string>
 #include <array>
 #include <vector>
+#include <map>
 #include <gtest/gtest.h>
 
 class KDTreeTest : public ::testing::Test {
@@ -19,6 +20,11 @@ protected:
 		twodtree2 = twodtree;
 
 		threedtree2[threedcoords2] = v2;
+
+		data.emplace(twodcoords1, b1);
+		data.emplace(twodcoords2, b2);
+		data.emplace(twodcoords3, b3);
+
 	}
 
 	KDTree<2, std::string> twodtree;
@@ -32,6 +38,7 @@ protected:
 	std::array<double, 2> point1 = {2, 0};
 	std::vector<std::string> knn0 = {b2};
 	std::vector<std::string> knn1 = {b1, b3};
+	std::map<std::array<double, 2>, std::string> data;
 
 
 	KDTree<3, std::string> threedtree;
@@ -77,8 +84,16 @@ TEST_F(KDTreeTest, AccessWorks) {
 	EXPECT_EQ(threedtree2[threedcoords2], v2);
 }
 
+TEST_F(KDTreeTest, ConstructFromDataWorks) {
+	KDTree<2, std::string> twodtree1(data);
+	EXPECT_EQ(twodtree1.size(), 3);
+}
+
 TEST_F(KDTreeTest, kNNWorks) {
+	KDTree<2, std::string> twodtree1(data);
 	EXPECT_EQ(twodtree.kNN(point0, "raven", 1), knn0);
 	EXPECT_EQ(twodtree.kNN(point1, "crow", 2), knn1);
+	EXPECT_EQ(twodtree1.kNN(point0, "building4", 1), knn0);
+	EXPECT_EQ(twodtree1.kNN(point1, "building5", 2), knn1);
 }
 

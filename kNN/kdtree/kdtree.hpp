@@ -1,14 +1,10 @@
-/* TODO:
- * - construct a kdtree from a set of data, instead of having the 
- *   user add each individual point manually
- */
-
 #pragma once
 
 #include <array>
 #include <cmath>	// std::max, std::sqrt, 
 #include <iostream>
 #include <vector>
+#include <map>
 #include "../bounded-extrinsic-pq/bounded_extrinsic_pq.hpp"
 
 /* Implementation of a kdtree. The dimension as well as the data type
@@ -38,12 +34,14 @@ public:
 	KDTree(const KDTree& rhs);
 	KDTree & operator =(const KDTree& rhs);
 
+	KDTree(const std::map<std::array<double, N>, T>& data);
+
 	size_t size() const;
 	bool empty() const; 
 	int height() const;
 	/** add data at a point. In case where the three already stores
 	    data at the point, it does nothing and returns false. */
-	bool add(std::array<double, N> coords, T data);
+	bool add(const std::array<double, N>& coords, const T& data);
 	bool contains(const T& data) const;
 	void print() const;
 
@@ -65,7 +63,7 @@ private:
 	Node * copyTree() const;	// copies the whole tree
 	void erase(Node * node);	// erases node and all its children
 	
-	bool addHelper(std::array<double, N> coords, T data, 
+	bool addHelper(const std::array<double, N>& coords, const T& data, 
 		Node *& node, int height);
 	bool containsHelper(const T& data, Node * node) const;
 	void printHelper(Node * node) const;
@@ -91,6 +89,15 @@ KDTree<N, T>::KDTree(const KDTree & rhs) {
 	root_ = rhs.copyTree();
 	size_ = rhs.size();
 	height_ = rhs.height();
+}
+
+template<size_t N, typename T>
+KDTree<N, T>::KDTree(const std::map<std::array<double, N>, T>& data) {
+	root_ = nullptr;
+	size_ = 0;
+	height_ = -1;
+	for (auto const& item : data)
+		add(item.first, item.second);
 }
 
 template<size_t N, typename T>
@@ -136,7 +143,7 @@ typename KDTree<N, T>::Node * KDTree<N, T>::copyTree() const {
 }
 
 template<size_t N, typename T>
-bool KDTree<N, T>::add(std::array<double, N> coords, T data) {
+bool KDTree<N, T>::add(const std::array<double, N>& coords, const T& data) {
 	return addHelper(coords, data, root_, 0);
 }
 
@@ -217,7 +224,7 @@ void KDTree<N, T>::erase(Node * node) {
 }
 
 template<size_t N, typename T>
-bool KDTree<N, T>::addHelper(std::array<double, N> coords, T data, 
+bool KDTree<N, T>::addHelper(const std::array<double, N>& coords, const T& data, 
 		Node *& node, int height) {
 	if (node == nullptr) {
 		node = new Node(coords, data);
