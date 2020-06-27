@@ -16,17 +16,17 @@ enum CostFunction {
 
 class ForwardNetwork {
 public:
-	ForwardNetwork(std::vector<int> layer_sizes, CostFunction cost_type);
-	void SGD(std::vector<shared_ptr<Vector>> training_data, int epochs,
-		int batch_size, double eta);
+	ForwardNetwork(std::vector<int> layer_sizes, 
+		CostFunction cost_type=quadratic);
+	void SGD(std::vector<std::array<Vector, 2>>& training_data, 
+		int epochs, int batch_size, double eta);
 private:
-	std::vector<shared_ptr<Matrix>> weights_;
-	std::vector<shared_ptr<Vector>> biases_;
+	std::vector<Matrix> weights_;
+	std::vector<Vector> biases_;
+	const std::vector<int> layer_sizes_;
 	unique_ptr<Cost> cost_function_;
-	int layers_;
+	const int layers_;
 	// returns a vector with the delta vector of each layer
-	std::vector<Vector> backProp(const Vector& input,
+	std::vector<Vector> backPropagation(const Vector& input,
 		const Vector& output) const;
-	// returns a vector with the activation layers
-	std::vector<Vector> activateLayers(const Vector& input) const;
 };
