@@ -24,9 +24,6 @@ private:
 	std::vector<Matrix> weights_;
 	std::vector<Vector> biases_;
 	const std::vector<int> layer_sizes_;
-	unique_ptr<Cost> cost_function_;
+	unique_ptr<Cost> cost_;
 	const int layers_;
-	// returns a vector with the delta vector of each layer
-	std::vector<Vector> backPropagation(const Vector& input,
-		const Vector& output) const;
 };

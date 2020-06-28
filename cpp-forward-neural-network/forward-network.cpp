@@ -15,10 +15,10 @@ ForwardNetworK::ForwardNetwork(std::vector<int> layer_sizes,
 	}
 	switch (cost_type) {
 		case crossentropy:
-			cost_function_ = make_unique<CrossEntropyCost>();
+			cost_= make_unique<CrossEntropyCost>();
 			break;
 		default:
-			cost_function_ = make_unique<QuadraticCost>();
+			cost_= make_unique<QuadraticCost>();
 	}
 }
 
@@ -29,35 +29,53 @@ void ForwardNetworK::SGD(std::vector<std::array<Vector, 2>>& training_data,
 		std::random_shuffle(training_data.begin(), training_data.end());
 		// for every learning step, we only consider a subset of the data
 		const int nr_of_batches = training_data.size() / batch_size;
-		int training_example = 0;
+		int ex = 0;	// to keep track of the current training example
 		for (int batch_nr = 0; batch_nr != nr_of_batches; ++batch) {
+			// for every training example in the base, we have a vector
+			// of Vectors, where every Vector contains a layer of 
+			// activations/weighted inputs/deltas, respectively
 			std::vector<std::vector<Vector>> activations(batch_size);
 			std::vector<std::vector<Vector>> weighted_inputs(batch_size)
 			std::vector<std::vector<Vector>> delta(batch_size);
 			// for each training example, apply backpropagation 
-			for (int input_nr = 0; input_nr != batch_size; ++input_nr) {
+			for (int exb = 0; exb != batch_size; ++exb) {
 				// set training example input
-				activations[input_nr][0] = training_data[input_nr][0];
+				activations[exb][0] = training_data[ex][0];
 				// calculated weighted inputs and activations
-				for (int layer = 1; layer != layers_; ++layer) {
-					weighted_inputs[input_nr][layer-1] = 
-						weights_[input_nr]*(activations[input_nr][layer]) 
-						+ biases_[i];
-					activations[input_nr][layer-1] = 
-						sigmoid(weighted_inputs[input_nr][layer-1]);
+				for (int lyr = 0; lyr != layers_ - 1; ++lyr) {
+					weighted_inputs[exb][lyr] = 
+						weights_[exb]*(activations[exb][lyr]) + biases_[lyr];
+					activations[exb][lyr+1] = 
+						sigmoid(weighted_inputs[exb][lyr]);
 				}
+				// backpropagate delta
+				delta[exb][layers_ - 2] = 
+					cost_->delta_output(activations[exb][layers_-1],
+						weighted_inputs[exb][layers_-1],
+						training_data[ex][1]
+					);
+				for (int lyr = layers_ - 3; lyr != -1; --lyr)
+					delta[exb][lyr] = coeffProduct(
+						weights_[exb][lyr+2].transpose() * delta[exb][lyr+1], 
+						sigmoidPrime(weighted_inputs[exb][lyr])	// (ch2, BP2)
+					);
+				++ex;
 			}
-			
+			// update weights and biases using (ch 1, 20), (ch 1, 21),
+			// (ch 2, BP3), (ch2, BP4)
+			for (int lyr = 0; lyr != layers_ - 1; ++lyr) {
+				Matrix update_weight_summand;
+				Vector update_bias_summand;
+				for (int exb = 0; exb != batch_size; ++exb) {
+					update_weight_summand += 
+						delta[exb][lyr] * activations[exb][lyr-1].transpose();
+					update_bias_summand += delta[exb][lyr];
+				}
+				double step = eta / batch_size;
+				weights_[lyr] = weights_[lyr] - step*update_weight_summand;
+				biases_[lyr] = biases_[lyr] - step*update_bias_summand; 
+			}
 		}
 	}
-	
-
-	std::vector<Vector> activations(layers_);
-	activations[0] = 
 }
 
-// returns a vector with the delta vector of each layer
-std::vector<Vector> ForwardNetworK::backPropagation(const Vector& input,
-	const Vector& output) const {
-
-}
