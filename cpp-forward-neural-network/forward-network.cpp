@@ -36,7 +36,8 @@ void ForwardNetworK::SGD(std::vector<std::array<Vector, 2>>& training_data,
 			// activations/weighted inputs/deltas, respectively
 			std::vector<std::vector<Vector>> activations(batch_size);
 			std::vector<std::vector<Vector>> weighted_inputs(batch_size)
-			std::vector<std::vector<Vector>> delta(batch_size);
+			std::vector<std::vector<Vector>> delta;
+			delta.reserve(batch_size);
 			// for each training example, apply backpropagation 
 			for (int exb = 0; exb != batch_size; ++exb) {
 				// set training example input
@@ -45,20 +46,12 @@ void ForwardNetworK::SGD(std::vector<std::array<Vector, 2>>& training_data,
 				for (int lyr = 0; lyr != layers_ - 1; ++lyr) {
 					weighted_inputs[exb][lyr] = 
 						weights_[exb]*(activations[exb][lyr]) + biases_[lyr];
-					activations[exb][lyr+1] = 
-						sigmoid(weighted_inputs[exb][lyr]);
+					activations[exb][lyr+1] = sigmoid(weighted_inputs[exb][lyr]);
 				}
-				// backpropagate delta
-				delta[exb][layers_ - 2] = 
-					cost_->delta_output(activations[exb][layers_-1],
-						weighted_inputs[exb][layers_-1],
-						training_data[ex][1]
-					);
-				for (int lyr = layers_ - 3; lyr != -1; --lyr)
-					delta[exb][lyr] = coeffProduct(
-						weights_[exb][lyr+2].transpose() * delta[exb][lyr+1], 
-						sigmoidPrime(weighted_inputs[exb][lyr])	// (ch2, BP2)
-					);
+				// determine deltas with backpropagation
+				delta.push_back(
+					backProp(weighted_inputs[exb], activations[exb], ex)
+				);
 				++ex;
 			}
 			// update weights and biases using (ch 1, 20), (ch 1, 21),
@@ -77,5 +70,21 @@ void ForwardNetworK::SGD(std::vector<std::array<Vector, 2>>& training_data,
 			}
 		}
 	}
+}
+
+std::vector<Vector> ForwardNetwork::backProp(const std::vector<Vector>& w_inputs,
+		const std::vector<Vector>& activations, int ex) const {
+	std::vector<Vector> delta(layers_ - 1);
+	delta[layers_ - 2] = 
+		cost_->delta_output(activations[layers_-1],
+			w_inputs[layers_-1],
+			training_data[ex][1]
+		);
+	for (int lyr = layers_ - 3; lyr != -1; --lyr)
+		delta[lyr] = coeffProduct(
+			weights_[lyr+2].transpose() * delta[lyr+1], 
+			sigmoidPrime(w_inputs[lyr])	// (ch2, BP2)
+		);
+	return std::move(delta);
 }
 

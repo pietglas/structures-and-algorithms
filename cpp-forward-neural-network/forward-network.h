@@ -26,4 +26,8 @@ private:
 	const std::vector<int> layer_sizes_;
 	unique_ptr<Cost> cost_;
 	const int layers_;
+
+	// determines the deltas for each layer, using backpropagation
+	std::vector<Vector> backProp(const std::vector<Vector>& w_inputs,
+		const std::vector<Vector>& activations, int ex) const
 };
