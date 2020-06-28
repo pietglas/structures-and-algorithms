@@ -45,13 +45,12 @@ void ForwardNetworK::SGD(std::vector<std::array<Vector, 2>>& training_data,
 					w_inputs[exb].push_back( 
 						weights_[exb]*(activations[exb][lyr]) + biases_[lyr]
 					);
-					activations[exb][lyr+1].push_back(
-						sigmoid(w_inputs[exb][lyr])
-					);
+					activations[exb][lyr+1].push_back(sigmoid(w_inputs[exb][lyr]));
 				}
 				// determine deltas with backpropagation
 				delta[exb].push_back(
-					backProp(w_inputs[exb], activations[exb], exb + batch*batch_size)
+					backProp(w_inputs[exb], activations[exb], 
+					exb + batch*batch_size)
 				);
 			}
 			// update weights and biases using (ch 1, 20), (ch 1, 21),

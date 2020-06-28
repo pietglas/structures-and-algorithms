@@ -2,6 +2,7 @@
 using Eigen::Dynamic = Dynamic;
 using Vector = Matrix<double, Dynamic, 1>;
 
+/* Interface for the cost function class. */
 class Cost {
 	virtual Vector delta_output(const Vector& non_sigmoid_output,
 		const Vector& output, const Vector& expected) = 0;

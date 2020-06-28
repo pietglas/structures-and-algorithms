@@ -12,6 +12,7 @@ class CrossEntropyCost : public Cost {
 public:
 	virtual Vector delta_output(const Vector& non_sigmoid_output,
 		const Vector& output, const Vector& expected) override;
+	/* cross-entropy cost function as per (ch 3, 57) */
 	virtual double cost_function(const Vector<size>& output,
 		const Vector<size>& expected) override;
 private:

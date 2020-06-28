@@ -1,4 +1,4 @@
-#include "cost.h"
+s#include "cost.h"
 #include "functions.h"
 #include <eigen/Eigen/Dense>
 using Eigen::Dynamic;
@@ -13,6 +13,7 @@ class QuadraticCost : public Cost {
 public:
 	virtual Vector delta_output(const Vector& non_sigmoid_output,
 		const Vector& output, const Vector& expected) override;
+	/* quadratic cost function as per (ch 1, 6) */
 	virtual double cost_function(const Vector& output,
 		const Vector& expected) override;
 private:
