@@ -45,18 +45,24 @@ void ForwardNetwork::dataSource(const std::vector<std::string>& files,
 
 }
 
-void ForwardNetwork::SGD(const std::vector<std::string>& data, 
-		int epochs, int batch_size, double eta) {
-	dataSource(data, true);
+int ForwardNetwork::trainingSize() const {
+	if (data_->training_data_.empty())
+		throw std::out_of_range("training data has not been set");
+	return data_->training_data_.size();
+}
+
+int ForwardNetwork::testSize() const {
+	if (data_->test_data_.empty())
+		throw std::out_of_range("test data has not been set");
+	return data_->test_data_.size();
+}
+
+void ForwardNetwork::SGD(int epochs, int batch_size, double eta) {
 	for (int epoch = 0; epoch != epochs; ++epoch) {
 		// shuffle the data
 		std::random_shuffle(data_->training_data_.begin(), data_->training_data_.end());
 		// divide the training data in batches of size batch_size
-		int nr_of_batches;
-		if (batch_size > -1)
-			 nr_of_batches = data_->training_data_.size() / batch_size;
-		else
-			nr_of_batches = 1;
+		int nr_of_batches = data_->training_data_.size() / batch_size;
 		for (int batch = 0; batch != nr_of_batches; ++batch) {
 			// for every training example in the batch, we have a vector
 			// of Vectors, where every Vector contains a layer of 

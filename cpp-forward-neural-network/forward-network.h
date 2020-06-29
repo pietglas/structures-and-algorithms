@@ -38,6 +38,8 @@ public:
 	ForwardNetwork(std::vector<int> layer_sizes, 
 		CostFunction cost_type=quadratic, DataType data_type=text);
 	void dataSource(const std::vector<std::string>& files, bool training) const;
+	int trainingSize() const;
+	int testSize() const;
 	/* Stochastic Gradient Descent algorithm, where `training_data` is a
 	 * vector of arrays containing the input and expected output, 
 	 * `epochs` the number of times we loop over the training data, 
@@ -45,8 +47,7 @@ public:
 	 * backpropagation, where -1 indicates regular gradient descent,
 	 * and `eta` the learning rate. 
 	 */
-	void SGD(const std::vector<std::string>& data, 
-		int epochs, int batch_size=-1, double eta=0.5);
+	void SGD(int epochs, int batch_size, double eta=0.5);
 private:
 	std::vector<Matrix> weights_;
 	std::vector<Vector> biases_;
