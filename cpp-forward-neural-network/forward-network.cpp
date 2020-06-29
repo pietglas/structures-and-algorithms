@@ -8,11 +8,11 @@ using std::shared_ptr;
 using Vector = Eigen::VectorXd;
 
 ForwardNetwork::ForwardNetwork(std::vector<int> layer_sizes, 
-		CostFunction cost_type, DataType data_type) : layers_{layer_sizes.size()},
-		layer_sizes_{layer_sizes} {
-	for (int i = 0; i != layers_- 2; ++i) {
-		biases_[i] = Vector::Random(layer_sizes[i]);
-		weights_[i-1] = Matrix::Random(layer_sizes[i], layer_sizes[i-1]);
+		CostFunction cost_type, DataType data_type) : 
+		layers_{layer_sizes.size()}, layer_sizes_{layer_sizes} {
+	for (int i = 0; i != layers_- 1; ++i) {
+		biases_.push_back(Vector::Random(layer_sizes[i+1]));
+		weights_.push_back(Matrix::Random(layer_sizes[i+1], layer_sizes[i]));
 	}
 	switch (cost_type) {
 		case crossentropy:
@@ -60,9 +60,12 @@ int ForwardNetwork::testSize() const {
 void ForwardNetwork::SGD(int epochs, int batch_size, double eta) {
 	for (int epoch = 0; epoch != epochs; ++epoch) {
 		// shuffle the data
-		std::random_shuffle(data_->training_data_.begin(), data_->training_data_.end());
+		std::random_shuffle(data_->training_data_.begin(), 
+			data_->training_data_.end());
 		// divide the training data in batches of size batch_size
 		int nr_of_batches = data_->training_data_.size() / batch_size;
+		// keep track of training example
+		int train_ex = 0;	
 		for (int batch = 0; batch != nr_of_batches; ++batch) {
 			// for every training example in the batch, we have a vector
 			// of Vectors, where every Vector contains a layer of 
@@ -72,15 +75,16 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta) {
 			std::vector<std::vector<Vector>> delta(batch_size);
 			// for each training example, apply backpropagation 
 			for (int exb = 0; exb != batch_size; ++exb) {
-				int train_ex = exb + batch*batch_size;
 				// feedforward to calculate activations and weighted inputs
 				feedForward(activations[exb], w_inputs[exb], train_ex);
 				// determine deltas with backpropagation
 				backProp(activations[exb], w_inputs[exb],  
 					delta[exb], data_->training_data_[train_ex][1]);
+				++train_ex;
 			}
 			// update weights and biases using (ch 1, 20), (ch 1, 21),
 			// (ch 2, BP3), (ch2, BP4)
+			double step = eta / batch_size;
 			for (int lyr = 0; lyr != layers_ - 1; ++lyr) {
 				Matrix weight_summand = Matrix::Zero(delta[0][lyr].size(),
 					activations[0][lyr].size());
@@ -88,10 +92,9 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta) {
 					Vector::Zero(delta[0][lyr].size());
 				for (int exb = 0; exb != batch_size; ++exb) {
 					weight_summand += 
-						delta[exb][lyr] * activations[exb][lyr-1].transpose();
+						delta[exb][lyr] * activations[exb][lyr].transpose();
 					bias_summand += delta[exb][lyr];
 				}
-				double step = eta / batch_size;
 				weights_[lyr] = weights_[lyr] - step*weight_summand;
 				biases_[lyr] = biases_[lyr] - step*bias_summand; 
 			}
