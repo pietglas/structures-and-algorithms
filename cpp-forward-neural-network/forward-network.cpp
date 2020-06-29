@@ -1,56 +1,85 @@
 #include "forward-network.h"
 #include <algorithm>	// for std::random_shuffle
+#include <stdexcept>
 
 using Matrix = Eigen::MatrixXd;
 using std::unique_ptr;
 using std::shared_ptr;
 using Vector = Eigen::VectorXd;
 
-ForwardNetworK::ForwardNetwork(std::vector<int> layer_sizes, 
-		CostFunction cost_type) : layers_{layer_sizes.size()},
+ForwardNetwork::ForwardNetwork(std::vector<int> layer_sizes, 
+		CostFunction cost_type, DataType data_type) : layers_{layer_sizes.size()},
 		layer_sizes_{layer_sizes} {
-	for (int i = 0; i != layer_sizes - 2; ++i) {
+	for (int i = 0; i != layers_- 2; ++i) {
 		biases_[i] = Vector::Random(layer_sizes[i]);
 		weights_[i-1] = Matrix::Random(layer_sizes[i], layer_sizes[i-1]);
 	}
 	switch (cost_type) {
 		case crossentropy:
-			cost_= make_unique<CrossEntropyCost>();
+			cost_= std::make_unique<CrossEntropyCost>();
 			break;
 		default:
-			cost_= make_unique<QuadraticCost>();
+			cost_= std::make_unique<QuadraticCost>();
+	}
+	switch (data_type) {
+		case binary:
+			data_ = std::make_unique<ReadMNist>();
+			break;
+		default:
+			data_ = std::make_unique<ReadText>();
 	}
 }
 
-void ForwardNetworK::SGD(std::vector<std::array<Vector, 2>>& training_data, 
+void ForwardNetwork::dataSource(const std::vector<std::string>& files, 
+		bool training) const {
+	if (files.size() == 1) 
+		data_->read(files[0], training);	// read training data
+	else if (files.size() == 2) {
+		data_->readData(files[0], training);
+		data_->readLabel(files[1], training);
+	}
+	else
+		throw std::invalid_argument(
+			"program not compatible with current number of files"
+		);
+
+}
+
+void ForwardNetwork::SGD(const std::vector<std::string>& data, 
 		int epochs, int batch_size, double eta) {
+	dataSource(data, true);
 	for (int epoch = 0; epoch != epochs; ++epoch) {
 		// shuffle the data
-		std::random_shuffle(training_data.begin(), training_data.end());
-		// for every learning step, we only consider a subset of the data
-		const int nr_of_batches = training_data.size() / batch_size;
+		std::random_shuffle(data_->training_data_.begin(), data_->training_data_.end());
+		// divide the training data in batches of size batch_size
+		int nr_of_batches;
+		if (batch_size > -1)
+			 nr_of_batches = data_->training_data_.size() / batch_size;
+		else
+			nr_of_batches = 1;
 		for (int batch = 0; batch != nr_of_batches; ++batch) {
 			// for every training example in the batch, we have a vector
 			// of Vectors, where every Vector contains a layer of 
 			// activations/weighted inputs/deltas, respectively
 			std::vector<std::vector<Vector>> activations(batch_size);
-			std::vector<std::vector<Vector>> w_inputs(batch_size)
-			std::vector<std::vector<Vector>> delta(batch_size);
+			std::vector<std::vector<Vector>> w_inputs(batch_size);
+			std::vector<std::vector<Vector>> delta;
+			delta.reserve(batch_size);
 			// for each training example, apply backpropagation 
 			for (int exb = 0; exb != batch_size; ++exb) {
 				// set training example input
-				activations[exb].push_back(training_data[exb + batch*batch_size][0]);
+				activations[exb].push_back(data_->training_data_[exb + batch*batch_size][0]);
 				// calculated weighted inputs and activations
 				for (int lyr = 0; lyr != layers_ - 1; ++lyr) {
 					w_inputs[exb].push_back( 
 						weights_[exb]*(activations[exb][lyr]) + biases_[lyr]
 					);
-					activations[exb][lyr+1].push_back(sigmoid(w_inputs[exb][lyr]));
+					activations[exb].push_back(sigmoid(w_inputs[exb][lyr]));
 				}
 				// determine deltas with backpropagation
-				delta[exb].push_back(
+				delta.push_back(
 					backProp(w_inputs[exb], activations[exb], 
-					exb + batch*batch_size)
+					data_->training_data_[exb + batch*batch_size][1])
 				);
 			}
 			// update weights and biases using (ch 1, 20), (ch 1, 21),
@@ -74,12 +103,12 @@ void ForwardNetworK::SGD(std::vector<std::array<Vector, 2>>& training_data,
 }
 
 std::vector<Vector> ForwardNetwork::backProp(const std::vector<Vector>& w_inputs,
-		const std::vector<Vector>& activations, int ex) const {
+		const std::vector<Vector>& activations, const Vector& output) const {
 	std::vector<Vector> delta(layers_ - 1);
 	delta[layers_ - 2] = 
 		cost_->delta_output(activations[layers_-1],
 			w_inputs[layers_-1],
-			training_data[ex][1]
+			output
 		);
 	for (int lyr = layers_ - 3; lyr != -1; --lyr)
 		delta[lyr] = coeffProduct(

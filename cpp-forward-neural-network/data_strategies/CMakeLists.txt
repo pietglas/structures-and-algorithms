@@ -1,0 +1,1 @@
+add_library(data_strategies read-text.cpp read-mnist.cpp)
