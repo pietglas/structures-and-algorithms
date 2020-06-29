@@ -11,10 +11,10 @@ using Vector = Eigen::VectorXd;
  */
 class CrossEntropyCost : public Cost {
 public:
-	virtual Vector delta_output(const Vector& non_sigmoid_output,
+	virtual Vector deltaOutput(const Vector& non_sigmoid_output,
 		const Vector& output, const Vector& expected) override;
 	/* cross-entropy cost function as per (ch 3, 57) */
-	virtual double cost_function(const Vector& output,
+	virtual double costFunction(const Vector& output,
 		const Vector& expected) override;
 private:
 	

@@ -69,24 +69,15 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta) {
 			// activations/weighted inputs/deltas, respectively
 			std::vector<std::vector<Vector>> activations(batch_size);
 			std::vector<std::vector<Vector>> w_inputs(batch_size);
-			std::vector<std::vector<Vector>> delta;
-			delta.reserve(batch_size);
+			std::vector<std::vector<Vector>> delta(batch_size);
 			// for each training example, apply backpropagation 
 			for (int exb = 0; exb != batch_size; ++exb) {
-				// set training example input
-				activations[exb].push_back(data_->training_data_[exb + batch*batch_size][0]);
-				// calculated weighted inputs and activations
-				for (int lyr = 0; lyr != layers_ - 1; ++lyr) {
-					w_inputs[exb].push_back( 
-						weights_[exb]*(activations[exb][lyr]) + biases_[lyr]
-					);
-					activations[exb].push_back(sigmoid(w_inputs[exb][lyr]));
-				}
+				int train_ex = exb + batch*batch_size;
+				// feedforward to calculate activations and weighted inputs
+				feedForward(activations[exb], w_inputs[exb], train_ex);
 				// determine deltas with backpropagation
-				delta.push_back(
-					backProp(w_inputs[exb], activations[exb], 
-					data_->training_data_[exb + batch*batch_size][1])
-				);
+				backProp(activations[exb], w_inputs[exb],  
+					delta[exb], data_->training_data_[train_ex][1]);
 			}
 			// update weights and biases using (ch 1, 20), (ch 1, 21),
 			// (ch 2, BP3), (ch2, BP4)
@@ -108,11 +99,44 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta) {
 	}
 }
 
-std::vector<Vector> ForwardNetwork::backProp(const std::vector<Vector>& w_inputs,
-		const std::vector<Vector>& activations, const Vector& output) const {
-	std::vector<Vector> delta(layers_ - 1);
+double ForwardNetwork::test() const {
+	std::vector<std::vector<Vector>> activations(testSize());
+	std::vector<std::vector<Vector>> w_inputs(testSize());
+	double total_cost = 0;
+	for (int ex = 0; ex != testSize(); ++ex) {
+		activations[ex].reserve(layers_);
+		w_inputs[ex].reserve(layers_ - 1);
+		feedForward(activations[ex], w_inputs[ex], ex);
+		// add the cost for this example to the total cost
+		total_cost += cost_->costFunction(
+			activations[ex][layers_-1], data_->test_data_[ex][1]
+		);
+	}
+	return total_cost / testSize();
+}
+
+void ForwardNetwork::feedForward(std::vector<Vector>& activations,
+		std::vector<Vector>& w_inputs, int train_ex) const {
+	// reserve enough memory to prevent many resize operations
+	activations.reserve(layers_);
+	w_inputs.reserve(layers_-1);
+	// activate first layer
+	activations.push_back(data_->training_data_[train_ex][0]);
+	// calculated weighted inputs and activations
+	for (int lyr = 0; lyr != layers_ - 1; ++lyr) {
+		w_inputs.push_back( 
+			weights_[lyr]*(activations[lyr]) + biases_[lyr]
+		);
+		activations.push_back(sigmoid(w_inputs[lyr]));
+	}
+}
+
+void ForwardNetwork::backProp(const std::vector<Vector>& activations, 
+		const std::vector<Vector>& w_inputs,
+		std::vector<Vector>& delta, const Vector& output) const {
+	delta.resize(layers_ - 1);
 	delta[layers_ - 2] = 
-		cost_->delta_output(activations[layers_-1],
+		cost_->deltaOutput(activations[layers_-1],
 			w_inputs[layers_-1],
 			output
 		);
@@ -121,7 +145,6 @@ std::vector<Vector> ForwardNetwork::backProp(const std::vector<Vector>& w_inputs
 			weights_[lyr+2].transpose() * delta[lyr+1], 
 			sigmoidPrime(w_inputs[lyr])	// (ch2, BP2)
 		);
-	return std::move(delta);
 }
 
 

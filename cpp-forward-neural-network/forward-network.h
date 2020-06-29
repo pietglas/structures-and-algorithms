@@ -48,6 +48,7 @@ public:
 	 * and `eta` the learning rate. 
 	 */
 	void SGD(int epochs, int batch_size, double eta=0.5);
+	double test() const;
 private:
 	std::vector<Matrix> weights_;
 	std::vector<Vector> biases_;
@@ -56,7 +57,10 @@ private:
 	unique_ptr<ReadData> data_;
 	const int layers_;
 
+	void feedForward(std::vector<Vector>& activations,
+		std::vector<Vector>& w_inputs, int train_ex) const;
 	/* determines the deltas for each layer, using backpropagation */
-	std::vector<Vector> backProp(const std::vector<Vector>& w_inputs,
-		const std::vector<Vector>& activations, const Vector& output) const;
+	void backProp(const std::vector<Vector>& activations, 
+		const std::vector<Vector>& w_inputs, std::vector<Vector>& delta, 
+		const Vector& output) const;
 };
