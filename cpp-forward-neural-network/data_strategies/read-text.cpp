@@ -1,4 +1,5 @@
 #include "read-text.h"
+#include <iostream>
 
 void ReadText::read(const std::string& file_path, bool training) {
 	int input_size;
@@ -17,6 +18,7 @@ void ReadText::read(const std::string& file_path, bool training) {
 		size = test_size_;
 	}
 	training_data_.reserve(size);
+	test_data_.reserve(size);
 	for (int ex = 0; ex != size; ++ex) {
 		Vector input(input_size);
 		Vector output(output_size);

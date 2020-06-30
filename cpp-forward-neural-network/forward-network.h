@@ -47,8 +47,9 @@ public:
 	 * backpropagation, where -1 indicates regular gradient descent,
 	 * and `eta` the learning rate. 
 	 */
-	void SGD(int epochs, int batch_size, double eta=0.5);
-	double test() const;
+	void SGD(int epochs, int batch_size, double eta=0.5, bool test=false);
+	double test(bool test_data=true) const;
+	void resetNetwork();
 private:
 	std::vector<Matrix> weights_;
 	std::vector<Vector> biases_;

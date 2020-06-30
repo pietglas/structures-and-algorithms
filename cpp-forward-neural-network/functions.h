@@ -23,7 +23,7 @@ inline Vector coeffProduct(const Vector& v1, const Vector& v2) {
 inline Vector sigmoid(const Vector& z) {
 	Vector result(z.size());
 	for (int i = 0; i != z.size(); ++i)
-		result(i) = 1 / (1 +  exp(z(i)));
+		result(i) = 1 / (1 +  exp(z(i)*(-1)));
 	return result;
 }
 

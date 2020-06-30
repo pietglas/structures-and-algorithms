@@ -1,7 +1,7 @@
 #include "quadratic-cost.h"
 
-Vector QuadraticCost::deltaOutput(const Vector& non_sigmoid_output,
-		const Vector& output, const Vector& expected) {
+Vector QuadraticCost::deltaOutput(const Vector& output, const Vector& expected,
+		const Vector& non_sigmoid_output) {
 	return std::move(coeffProduct(output - expected, 
 		sigmoidPrime(non_sigmoid_output)));
 }
