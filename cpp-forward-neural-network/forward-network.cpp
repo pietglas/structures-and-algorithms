@@ -12,22 +12,9 @@ using Vector = Eigen::VectorXd;
 ForwardNetwork::ForwardNetwork(std::vector<int> layer_sizes, 
 		CostFunction cost_type, DataType data_type) : 
 		layers_{layer_sizes.size()}, layer_sizes_{layer_sizes} {
-	for (int i = 0; i != layers_- 1; ++i) {
-		// set gaussian distribution with mean 0 and standard deviation 1
-		std::random_device rd;
-		std::default_random_engine generator(rd());
-		std::normal_distribution<double> distribution{0, 1};
-		auto normal = [&] (double) {return distribution(generator);};
-		// initialize weights and biases randomly
-		biases_.push_back(
-			Vector::NullaryExpr(layer_sizes[i+1], normal)
-		);
-		weights_.push_back(
-			Matrix::NullaryExpr(layer_sizes[i+1], layer_sizes[i], normal)
-		);
-		// std::cout << "weights: " << weights_[0] << std::endl;
-		// std::cout << "biases: " << biases_[0] << std::endl;
-	}
+	// set weights and biases
+	this->setWeightsBiasesRandom();
+	// set cost function type 
 	switch (cost_type) {
 		case crossentropy:
 			cost_= std::make_unique<CrossEntropyCost>();
@@ -35,6 +22,7 @@ ForwardNetwork::ForwardNetwork(std::vector<int> layer_sizes,
 		default:
 			cost_= std::make_unique<QuadraticCost>();
 	}
+	// choose a read strategy
 	switch (data_type) {
 		case binary:
 			data_ = std::make_unique<ReadMNist>();
@@ -114,7 +102,7 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 				biases_[lyr] = biases_[lyr] - step*bias_summand; 
 			}
 			if (test)
-				this->test(false);
+				this->test(false);	// test on training data
 		}
 	}
 }
@@ -148,25 +136,7 @@ double ForwardNetwork::test(bool test_data) const {
 void ForwardNetwork::resetNetwork() {
 	biases_ = std::vector<Vector>();
 	weights_ = std::vector<Matrix>();
-	biases_.reserve(layers_-1);
-	weights_.reserve(layers_-1);
-	for (int i = 0; i != layers_- 1; ++i) {
-		// set gaussian distribution with mean 0 and standard dev 1
-		std::random_device rd;
-		std::default_random_engine generator(rd());
-		std::normal_distribution<double> distribution{0, 1};
-		auto normal = [&] (double) {return distribution(generator);};
-		//auto normal2 = [&] (double) {return distribution(generator);};
-		// initialize weights and biases randomly
-		biases_.push_back(
-			Vector::NullaryExpr(layer_sizes_[i+1], normal)
-		);
-		weights_.push_back(
-			Matrix::NullaryExpr(layer_sizes_[i+1], layer_sizes_[i], normal)
-		);
-	}
-	// std::cout << "weights: " << weights_[0] << std::endl;
-	// std::cout << "biases: " << biases_[0] << std::endl;
+	setWeightsBiasesRandom();
 }
 
 void ForwardNetwork::feedForward(std::vector<Vector>& activations,
@@ -198,6 +168,25 @@ void ForwardNetwork::backProp(const std::vector<Vector>& activations,
 			weights_[lyr+1].transpose() * delta[lyr+1], 
 			sigmoidPrime(w_inputs[lyr])	// (ch2, BP2)
 		);
+}
+
+void ForwardNetwork::setWeightsBiasesRandom() {
+	biases_.reserve(layers_-1);
+	weights_.reserve(layers_-1);
+	for (int i = 0; i != layers_- 1; ++i) {
+		// set gaussian distribution with mean 0 and standard dev 1
+		std::random_device rd;
+		std::default_random_engine generator(rd());
+		std::normal_distribution<double> distribution{0, 1};
+		auto normal = [&] (double) {return distribution(generator);};
+		// initialize weights and biases randomly
+		biases_.push_back(
+			Vector::NullaryExpr(layer_sizes_[i+1], normal)
+		);
+		weights_.push_back(
+			Matrix::NullaryExpr(layer_sizes_[i+1], layer_sizes_[i], normal)
+		);
+	}
 }
 
 

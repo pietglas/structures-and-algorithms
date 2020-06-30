@@ -11,10 +11,10 @@ int main(int argc, char **argv) {
 	}
 	std::vector data{std::string(argv[1])};
 	simple_nn.dataSource(data, true);
-	for (int i = 1; i != 4; i++) {
+	for (int i = 1; i != 11; i++) {
 		double eta = i*0.2;
 		std::cout << "eta this run: " << eta << std::endl;
-		simple_nn.SGD(300, simple_nn.trainingSize(), eta, true);
+		simple_nn.SGD(100, simple_nn.trainingSize(), eta, true);
 		simple_nn.resetNetwork();
 	}
 }

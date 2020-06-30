@@ -1,4 +1,5 @@
-Implementation (in progress) of a feedforward neural network in C++. 
+Implementation (in progress) of a feedforward neural network in C++. For the linear algebra I use the Eigen library, which I chose because it is header-only and it has
+a high STL-flavour over it. 
 
 I'll a description once it's working. There are already several implementations out there (also in C++). The main purpose of this project is for me to get more experienced with modern C++ features such as smart pointers and multithreading. 
 

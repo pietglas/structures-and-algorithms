@@ -64,4 +64,5 @@ private:
 	void backProp(const std::vector<Vector>& activations, 
 		const std::vector<Vector>& w_inputs, std::vector<Vector>& delta, 
 		const Vector& output) const;
+	void setWeightsBiasesRandom();
 };
