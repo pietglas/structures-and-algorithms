@@ -1,13 +1,17 @@
 #include "read-text.h"
 #include <iostream>
+#include <functional>
 
 void ReadText::read(const std::string& file_path, bool training) {
 	int input_size;
 	int output_size;
 	int size;
+	auto train_or_test = std::ref(training_data_);
 	ifstream data(file_path);
-	if (!data)
+	if (!data) {
 		cout << "Could not load the data" << endl;
+		train_or_test = std::ref(test_data_);
+	}
 	data >> input_size >> output_size;
 	if (training) {
 		data >> train_size_;
@@ -17,8 +21,7 @@ void ReadText::read(const std::string& file_path, bool training) {
 		data >> test_size_;
 		size = test_size_;
 	}
-	training_data_.reserve(size);
-	test_data_.reserve(size);
+	train_or_test.get().reserve(size);
 	for (int ex = 0; ex != size; ++ex) {
 		Vector input(input_size);
 		Vector output(output_size);
@@ -28,12 +31,9 @@ void ReadText::read(const std::string& file_path, bool training) {
 		// get output neurons from file
 		for (int j = 0; j != output_size; j++)
 			data >> output(j);
-		if (training)
-			training_data_.push_back(std::array{input, output});
-		else
-			test_data_.push_back(std::array{input, output});
+		train_or_test.get().push_back(std::array{input, output});
 	}
 }
 
-void ReadText::readData(const std::string& file_path, bool training) {}
-void ReadText::readLabel(const std::string& file_path, bool training) {}
+void ReadText::readData(bool training) {}
+

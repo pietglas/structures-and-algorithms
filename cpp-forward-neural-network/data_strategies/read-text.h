@@ -15,8 +15,7 @@ using Vector = Eigen::VectorXd;
 class ReadText : public ReadData {
 public:
 	virtual void read(const std::string& file_path, bool training) override;
-	virtual void readData(const std::string& file_path, bool training) override;
-	virtual void readLabel(const std::string& file_path, bool training) override;
+	virtual void readData(bool training) override;
 };
 
 

@@ -37,7 +37,7 @@ class ForwardNetwork {
 public:
 	ForwardNetwork(std::vector<int> layer_sizes, 
 		CostFunction cost_type=quadratic, DataType data_type=text);
-	void dataSource(const std::vector<std::string>& files, bool training) const;
+	void dataSource(const std::string& file, bool training) const;
 	int trainingSize() const;
 	int testSize() const;
 	/* Stochastic Gradient Descent algorithm, where `training_data` is a

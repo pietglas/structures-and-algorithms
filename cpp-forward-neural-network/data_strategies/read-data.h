@@ -12,8 +12,7 @@ class ReadData {
 	friend class ForwardNetwork;
 public:
 	virtual void read(const std::string& file_path, bool training) = 0;
-	virtual void readData(const std::string& file_path, bool training) = 0;
-	virtual void readLabel(const std::string& file_path, bool training) = 0;
+	virtual void readData(bool training) = 0;
 protected:
 	std::vector<std::array<Vector, 2>> training_data_;
 	std::vector<std::array<Vector, 2>> test_data_;

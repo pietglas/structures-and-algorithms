@@ -32,19 +32,12 @@ ForwardNetwork::ForwardNetwork(std::vector<int> layer_sizes,
 	}
 }
 
-void ForwardNetwork::dataSource(const std::vector<std::string>& files, 
+void ForwardNetwork::dataSource(const std::string& file, 
 		bool training) const {
-	if (files.size() == 1) 
-		data_->read(files[0], training);	// read training data
-	else if (files.size() == 2) {
-		data_->readData(files[0], training);
-		data_->readLabel(files[1], training);
-	}
-	else
-		throw std::invalid_argument(
-			"program not compatible with current number of files"
-		);
-
+	if (!file.empty()) 
+		data_->read(file, training);	// read training data
+	else 
+		data_->readData(training);
 }
 
 int ForwardNetwork::trainingSize() const {
@@ -101,9 +94,9 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 				weights_[lyr] = weights_[lyr] - step*weight_summand;
 				biases_[lyr] = biases_[lyr] - step*bias_summand; 
 			}
-			if (test)
-				this->test(false);	// test on training data
 		}
+		if (test)
+			this->test(false);	// test on training data
 	}
 }
 
