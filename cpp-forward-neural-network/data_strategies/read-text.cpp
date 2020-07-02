@@ -31,7 +31,7 @@ void ReadText::read(const std::string& file_path, bool training) {
 		// get output neurons from file
 		for (int j = 0; j != output_size; j++)
 			data >> output(j);
-		train_or_test.get().push_back(std::array{input, output});
+		train_or_test.get().emplace_back(input, output);
 	}
 }
 

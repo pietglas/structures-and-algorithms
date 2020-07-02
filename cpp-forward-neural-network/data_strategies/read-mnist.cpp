@@ -1,6 +1,7 @@
 #include "read-mnist.h"
 #include <iostream>
 #include <functional>
+#include <initializer_list>
 
 void ReadMNist::read(const std::string& file_path, bool training) {}
 
@@ -57,7 +58,7 @@ void ReadMNist::readData(bool training) {
 		// set label at index nr equal to 1 
 		if (nr < 10) label((int)nr) = 1; 
 		// add the example to the stored data
-		data.get().push_back(std::array{image, label});
+		data.get().emplace_back(image, label);
 	}
 }
 

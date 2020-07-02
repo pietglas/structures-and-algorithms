@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <random>
+//#include <omp.h>
 
 using Matrix = Eigen::MatrixXd;
 using std::unique_ptr;
@@ -60,8 +61,6 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 			data_->training_data_.end());
 		// divide the training data in batches of size batch_size
 		int nr_of_batches = data_->training_data_.size() / batch_size;
-		// keep track of training example
-		int train_ex = 0;	
 		for (int batch = 0; batch != nr_of_batches; ++batch) {
 			// for every training example in the batch, we have a vector
 			// of Vectors, where every Vector contains a layer of 
@@ -70,29 +69,32 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 			std::vector<std::vector<Vector>> w_inputs(batch_size);
 			std::vector<std::vector<Vector>> delta(batch_size);
 			// for each training example, apply backpropagation 
-			for (int exb = 0; exb != batch_size; ++exb) {
+			omp_set_num_threads(4);
+			#pragma omp parallel for default(none) \
+				shared(activations, w_inputs, delta, batch_size, batch) \
+				schedule(guided)
+			for (int exb = 0; exb < batch_size; ++exb) {
 				// feedforward to calculate activations and weighted inputs
-				feedForward(activations[exb], w_inputs[exb], train_ex);
+				feedForward(activations[exb], w_inputs[exb], exb+batch_size*batch);
 				// determine deltas with backpropagation
 				backProp(activations[exb], w_inputs[exb],  
-					delta[exb], data_->training_data_[train_ex][1]);
-				++train_ex;
+					delta[exb], data_->training_data_[exb+batch_size*batch].second);
 			}
 			// update weights and biases using (ch 1, 20), (ch 1, 21),
 			// (ch 2, BP3), (ch2, BP4)
 			double step = eta / batch_size;
-			for (int lyr = 0; lyr != layers_ - 1; ++lyr) {
+			for (int lyr = 0; lyr < layers_ - 1; ++lyr) {
 				Matrix weight_summand = 
 					Matrix::Zero(weights_[lyr].rows(), weights_[lyr].cols());
 				Vector bias_summand = 
 					Vector::Zero(biases_[lyr].size());
 				for (int exb = 0; exb != batch_size; ++exb) {
-					weight_summand += 
+					weight_summand.noalias() += 
 						delta[exb][lyr] * activations[exb][lyr].transpose();
-					bias_summand += delta[exb][lyr];
+					bias_summand.noalias() += delta[exb][lyr];
 				}
-				weights_[lyr] = weights_[lyr] - step*weight_summand;
-				biases_[lyr] = biases_[lyr] - step*bias_summand; 
+				weights_[lyr].noalias() -= step*weight_summand;
+				biases_[lyr].noalias() -= step*bias_summand; 
 			}
 		}
 		if (test)
@@ -114,11 +116,11 @@ double ForwardNetwork::test(bool test_data) const {
 		// add the cost for this example to the total cost
 		if (test_data) 
 			total_cost += cost_->costFunction(
-				activations[ex][layers_-1], data_->test_data_[ex][1]
+				activations[ex][layers_-1], data_->test_data_[ex].second
 			);
 		else 	// test on training data if test data is not available
 			total_cost += cost_->costFunction(
-				activations[ex][layers_-1], data_->training_data_[ex][1]
+				activations[ex][layers_-1], data_->training_data_[ex].second
 			);
 	}
 	std::cout << "cost for this batch: " << total_cost / size 
@@ -138,13 +140,13 @@ void ForwardNetwork::feedForward(std::vector<Vector>& activations,
 	activations.reserve(layers_);
 	w_inputs.reserve(layers_-1);
 	// activate first layer
-	activations.push_back(data_->training_data_[train_ex][0]);
+	activations.emplace_back(data_->training_data_[train_ex].first);
 	// calculated weighted inputs and activations
 	for (int lyr = 0; lyr != layers_ - 1; ++lyr) {
-		w_inputs.push_back( 
+		w_inputs.emplace_back( 
 			weights_[lyr]*(activations[lyr]) + biases_[lyr]
 		);
-		activations.push_back(sigmoid(w_inputs[lyr]));
+		activations.emplace_back(sigmoid(w_inputs[lyr]));
 	}
 }
 
@@ -173,10 +175,10 @@ void ForwardNetwork::setWeightsBiasesRandom() {
 		std::normal_distribution<double> distribution{0, 1};
 		auto normal = [&] (double) {return distribution(generator);};
 		// initialize weights and biases randomly
-		biases_.push_back(
+		biases_.emplace_back(
 			Vector::NullaryExpr(layer_sizes_[i+1], normal)
 		);
-		weights_.push_back(
+		weights_.emplace_back(
 			Matrix::NullaryExpr(layer_sizes_[i+1], layer_sizes_[i], normal)
 		);
 	}
