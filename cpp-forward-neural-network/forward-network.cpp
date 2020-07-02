@@ -109,7 +109,11 @@ double ForwardNetwork::test(bool test_data) const {
 		size = testSize();
 	std::vector<std::vector<Vector>> activations(size);
 	std::vector<std::vector<Vector>> w_inputs(size);
-	for (int ex = 0; ex != size; ++ex) {
+	omp_set_num_threads(4);
+	#pragma omp parallel for default(none) \
+		shared(activations, w_inputs, size, total_cost, test_data) \
+		schedule(guided)
+	for (int ex = 0; ex < size; ++ex) {
 		activations[ex].reserve(layers_);
 		w_inputs[ex].reserve(layers_ - 1);
 		feedForward(activations[ex], w_inputs[ex], ex);
