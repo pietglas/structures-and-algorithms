@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <random>
+#include <chrono>
 //#include <omp.h>
 
 using Matrix = Eigen::MatrixXd;
@@ -54,6 +55,7 @@ int ForwardNetwork::testSize() const {
 }
 
 void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
+	omp_set_num_threads(4);
 	for (int epoch = 0; epoch != epochs; ++epoch) {
 		std::cout << "current epoch: " << epoch << std::endl;
 		// shuffle the data
@@ -62,14 +64,16 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 		// divide the training data in batches of size batch_size
 		int nr_of_batches = data_->training_data_.size() / batch_size;
 		for (int batch = 0; batch != nr_of_batches; ++batch) {
+			std::cout << "batch: " << batch << std::endl;
 			// for every training example in the batch, we have a vector
 			// of Vectors, where every Vector contains a layer of 
 			// activations/weighted inputs/deltas, respectively
+			auto start = std::chrono::high_resolution_clock::now();
 			std::vector<std::vector<Vector>> activations(batch_size);
 			std::vector<std::vector<Vector>> w_inputs(batch_size);
 			std::vector<std::vector<Vector>> delta(batch_size);
-			// for each training example, apply backpropagation 
-			omp_set_num_threads(4);
+			// for each training example, apply backpropagation. 
+			// parallelizing gives slight performance increase
 			#pragma omp parallel for default(none) \
 				shared(activations, w_inputs, delta, batch_size, batch) \
 				schedule(guided)
@@ -80,6 +84,10 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 				backProp(activations[exb], w_inputs[exb],  
 					delta[exb], data_->training_data_[exb+batch_size*batch].second);
 			}
+			auto finish = std::chrono::high_resolution_clock::now();
+			std::chrono::duration<double> elapsed = finish - start;
+			std::cout << "elapsed time feedforward & backprop: " << 
+				elapsed.count() << std::endl;
 			// update weights and biases using (ch 1, 20), (ch 1, 21),
 			// (ch 2, BP3), (ch2, BP4)
 			double step = eta / batch_size;
@@ -88,19 +96,34 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 					Matrix::Zero(weights_[lyr].rows(), weights_[lyr].cols());
 				Vector bias_summand = 
 					Vector::Zero(biases_[lyr].size());
-				for (int exb = 0; exb != batch_size; ++exb) {
+				// parallelizing gives performance increase of about a
+				// 100% !
+				#pragma omp parallel for default(none) \
+					shared(weight_summand, bias_summand, lyr, batch_size, \
+						activations, delta)
+				for (int exb = 0; exb < batch_size; ++exb) {
 					weight_summand.noalias() += 
-						delta[exb][lyr] * activations[exb][lyr].transpose();
+						delta[exb][lyr] * (activations[exb][lyr].transpose());
 					bias_summand.noalias() += delta[exb][lyr];
 				}
 				weights_[lyr].noalias() -= step*weight_summand;
 				biases_[lyr].noalias() -= step*bias_summand; 
 			}
+			finish = std::chrono::high_resolution_clock::now();
+			elapsed = finish - start;
+			std::cout << "elapsed time sgd: " << elapsed.count() << std::endl;
 		}
 		if (test)
 			this->test(false);	// test on training data
 	}
 }
+
+// auto start = std::chrono::high_resolution_clock::now();
+// auto finish = std::chrono::high_resolution_clock::now();
+// std::chrono::duration<double> elapsed = finish - start;
+// std::cout << "elapsed time: " << elapsed.count() << std::endl;
+
+
 
 double ForwardNetwork::test(bool test_data) const {
 	double total_cost = 0;
@@ -109,7 +132,7 @@ double ForwardNetwork::test(bool test_data) const {
 		size = testSize();
 	std::vector<std::vector<Vector>> activations(size);
 	std::vector<std::vector<Vector>> w_inputs(size);
-	omp_set_num_threads(4);
+	//omp_set_num_threads(4);
 	#pragma omp parallel for default(none) \
 		shared(activations, w_inputs, size, total_cost, test_data) \
 		schedule(guided)
