@@ -2,9 +2,11 @@
 #include <vector>
 #include <iostream>
 #include <chrono>
+#include <omp.h>
 
 int main(int argc, char **argv) {
 	auto start = std::chrono::high_resolution_clock::now();
+	omp_set_num_threads(4);
 	std::vector sizes{784, 15, 10};
 	ForwardNetwork simple_nn{sizes, quadratic, binary};
 	std::string data;

@@ -55,7 +55,7 @@ int ForwardNetwork::testSize() const {
 }
 
 void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
-	omp_set_num_threads(4);
+	// omp_set_num_threads(4);
 	for (int epoch = 0; epoch != epochs; ++epoch) {
 		std::cout << "current epoch: " << epoch << std::endl;
 		// shuffle the data
@@ -64,11 +64,14 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 		// divide the training data in batches of size batch_size
 		int nr_of_batches = data_->training_data_.size() / batch_size;
 		for (int batch = 0; batch != nr_of_batches; ++batch) {
-			std::cout << "batch: " << batch << std::endl;
+			// std::cout << "batch: " << batch << std::endl;
+			
 			// for every training example in the batch, we have a vector
 			// of Vectors, where every Vector contains a layer of 
 			// activations/weighted inputs/deltas, respectively
-			auto start = std::chrono::high_resolution_clock::now();
+			
+			// auto start = std::chrono::high_resolution_clock::now();
+			
 			std::vector<std::vector<Vector>> activations(batch_size);
 			std::vector<std::vector<Vector>> w_inputs(batch_size);
 			std::vector<std::vector<Vector>> delta(batch_size);
@@ -84,12 +87,15 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 				backProp(activations[exb], w_inputs[exb],  
 					delta[exb], data_->training_data_[exb+batch_size*batch].second);
 			}
-			auto finish = std::chrono::high_resolution_clock::now();
-			std::chrono::duration<double> elapsed = finish - start;
-			std::cout << "elapsed time feedforward & backprop: " << 
-				elapsed.count() << std::endl;
+			// auto finish = std::chrono::high_resolution_clock::now();
+			// std::chrono::duration<double> elapsed = finish - start;
+			// std::cout << "elapsed time feedforward & backprop: " << 
+			// 	elapsed.count() << std::endl;
+			
 			// update weights and biases using (ch 1, 20), (ch 1, 21),
 			// (ch 2, BP3), (ch2, BP4)
+			
+			// start = std::chrono::high_resolution_clock::now();
 			double step = eta / batch_size;
 			for (int lyr = 0; lyr < layers_ - 1; ++lyr) {
 				Matrix weight_summand = 
@@ -109,9 +115,9 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 				weights_[lyr].noalias() -= step*weight_summand;
 				biases_[lyr].noalias() -= step*bias_summand; 
 			}
-			finish = std::chrono::high_resolution_clock::now();
-			elapsed = finish - start;
-			std::cout << "elapsed time sgd: " << elapsed.count() << std::endl;
+			// finish = std::chrono::high_resolution_clock::now();
+			// elapsed = finish - start;
+			// std::cout << "elapsed time sgd: " << elapsed.count() << std::endl;
 		}
 		if (test)
 			this->test(false);	// test on training data
@@ -186,8 +192,8 @@ void ForwardNetwork::backProp(const std::vector<Vector>& activations,
 			w_inputs[layers_-2]
 		);
 	for (int lyr = layers_ - 3; lyr > -1; --lyr)
-		delta[lyr] = coeffProduct(
-			weights_[lyr+1].transpose() * delta[lyr+1], 
+		delta[lyr] = 
+			(weights_[lyr+1].transpose() * delta[lyr+1]).cwiseProduct( 
 			sigmoidPrime(w_inputs[lyr])	// (ch2, BP2)
 		);
 }
