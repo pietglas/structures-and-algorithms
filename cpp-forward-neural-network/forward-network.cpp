@@ -4,6 +4,7 @@
 #include <algorithm>	// for std::random_shuffle
 #include <stdexcept>
 #include <iostream>
+#include <functional> // for std::ref
 #include <random>
 #include <chrono>
 //#include <omp.h>
@@ -19,21 +20,10 @@ ForwardNetwork::ForwardNetwork(std::vector<int> layer_sizes,
 	// set weights and biases
 	this->setWeightsBiasesRandom();
 	// set cost function type 
-	switch (cost_type) {
-		case crossentropy:
-			cost_= std::make_unique<CrossEntropyCost>();
-			break;
-		default:
-			cost_= std::make_unique<QuadraticCost>();
-	}
+	this->setCost(cost_type);
 	// choose a read strategy
-	switch (data_type) {
-		case binary:
-			data_ = std::make_unique<ReadMNist>();
-			break;
-		default:
-			data_ = std::make_unique<ReadText>();
-	}
+	this->setDataType(data_type);
+	
 }
 
 void ForwardNetwork::dataSource(const std::string& file, 
@@ -56,6 +46,29 @@ int ForwardNetwork::testSize() const {
 	return data_->test_data_.size();
 }
 
+void ForwardNetwork::setDataType(const DataType& data_type) {
+	switch (data_type) {
+		case binary:
+			data_ = std::make_unique<ReadMNist>();
+			break;
+		default:
+			data_ = std::make_unique<ReadText>();
+	}
+}
+
+void ForwardNetwork::setCost(const CostFunction& cost_function) {
+	switch (cost_function) {
+		case crossentropy:
+			cost_= std::make_unique<CrossEntropyCost>();
+			break;
+		default:
+			cost_= std::make_unique<QuadraticCost>();
+	}
+}
+
+// user defined reductions for Eigen vectors and matrices; prevents data
+// races when multithreading a for-loop in which a shared variable is 
+// modified
 #pragma omp declare reduction (+: Eigen::MatrixXd: omp_out=omp_out+omp_in)\
 	initializer(omp_priv=Eigen::MatrixXd::Zero(omp_orig.rows(), omp_orig.cols()))
 #pragma omp declare reduction (+: Eigen::VectorXd: omp_out=omp_out+omp_in)\
@@ -113,6 +126,7 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 				// 100% !
 				#pragma omp parallel for default(shared) \
 					reduction(+: weight_summand, bias_summand)
+
 				for (int exb = 0; exb < batch_size; ++exb) {
 					weight_summand.noalias() += 
 						delta[exb][lyr] * (activations[exb][lyr].transpose());
@@ -130,41 +144,37 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 	}
 }
 
-// auto start = std::chrono::high_resolution_clock::now();
-// auto finish = std::chrono::high_resolution_clock::now();
-// std::chrono::duration<double> elapsed = finish - start;
-// std::cout << "elapsed time: " << elapsed.count() << std::endl;
-
-
-
-double ForwardNetwork::test(bool test_data) const {
-	double total_cost = 0;
+void ForwardNetwork::test(bool test_data) const {
+	int correct_examples = 0;
+	auto data = std::ref(data_->training_data_);
 	int size = trainingSize();
-	if (test_data)
+	if (test_data) {
 		size = testSize();
+		data = std::ref(data_->test_data_);
+	}
 	std::vector<std::vector<Vector>> activations(size);
 	std::vector<std::vector<Vector>> w_inputs(size);
-	//omp_set_num_threads(4);
-	#pragma omp parallel for default(none) \
-		shared(activations, w_inputs, size, total_cost, test_data) \
-		schedule(guided)
+
+	#pragma omp parallel for default(shared) \
+		reduction(+: correct_examples)
+
 	for (int ex = 0; ex < size; ++ex) {
 		activations[ex].reserve(layers_);
 		w_inputs[ex].reserve(layers_ - 1);
 		feedForward(activations[ex], w_inputs[ex], ex);
-		// add the cost for this example to the total cost
-		if (test_data) 
-			total_cost += cost_->costFunction(
-				activations[ex][layers_-1], data_->test_data_[ex].second
-			);
-		else 	// test on training data if test data is not available
-			total_cost += cost_->costFunction(
-				activations[ex][layers_-1], data_->training_data_[ex].second
-			);
+		// output is correct when the largest value has the same index
+		// as the index of the expected output with value 1
+		Vector::Index max_index_exp;
+		Vector::Index max_index_out;
+		double max_val = 
+			data.get()[ex].second.rowwise().sum().maxCoeff(&max_index_exp);
+		max_val = 
+			activations[ex][layers_-1].rowwise().sum().maxCoeff(&max_index_out);
+		if (max_index_out == max_index_exp)
+			++correct_examples;
 	}
-	std::cout << "cost for this batch: " << total_cost / size 
-		<< std::endl;
-	return total_cost / size;
+	std::cout << "number of correct examples: " << correct_examples <<
+		" / " << size << std::endl;
 }
 
 void ForwardNetwork::resetNetwork() {

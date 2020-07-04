@@ -15,10 +15,13 @@ int main(int argc, char **argv) {
 	}
 	//std::cout << "eta this run: " << eta << std::endl;
 	simple_nn.dataSource(data, true);
-	simple_nn.SGD(2, 60, 3, true);
+	for (int i = 1; i != 6; ++i) {
+		std::cout << "eta this run: " << i*0.4 << std::endl;
+		simple_nn.SGD(10, 40, 0.4*i, true);
+		simple_nn.resetNetwork();
+	}
+	
 	auto finish = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsed = finish - start;
 	std::cout << "elapsed time: " << elapsed.count() << std::endl;
-	simple_nn.resetNetwork();
-
 }

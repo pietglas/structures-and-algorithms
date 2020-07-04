@@ -1,7 +1,6 @@
 #include "read-mnist.h"
 #include <iostream>
 #include <functional>
-#include <initializer_list>
 
 void ReadMNist::read(const std::string& file_path, bool training) {}
 
@@ -35,10 +34,6 @@ void ReadMNist::readData(bool training) {
 	}
 	readAndReverse(nr_images, images);
 	readAndReverse(nr_labels, labels);
-	if (nr_images != nr_labels) {
-		std::cerr << "sets images and labels not compatibel" << std::endl;
-		return;
-	}
 	readAndReverse(rows, images);
 	readAndReverse(cols, images);
 	int image_size = rows * cols;
@@ -77,11 +72,3 @@ void ReadMNist::readAndReverse(int& i, std::ifstream& stream) const {
 	i = reverseInt(i);
 }
 
-// images.read((char*)&nr_images, sizeof(nr_images));
-// 	nr_images = reverseInt(nr_images);
-// 	images.read((char*)&rows, sizeof(rows));
-// 	rows = reverseInt(rows);
-// 	images.read((char*)&cols, sizeof(cols));
-// 	cols = reverseInt(cols);
-// 	labels.read((char*)&nr_labels, sizeof(nr_labels));
-// 	nr_labels = reverseInt(nr_labels);

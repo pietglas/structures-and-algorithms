@@ -38,8 +38,16 @@ public:
 	ForwardNetwork(std::vector<int> layer_sizes, 
 		CostFunction cost_type=quadratic, DataType data_type=text);
 	void dataSource(const std::string& file, bool training) const;
+	/* returns the size of the dataset with training examples. Throws
+	   std::out_of_range if training data is not set */
 	int trainingSize() const;
+	/* returns the size of the dataset with test examples. Throws 
+	   std::out_of_range if the test data has not been set */
 	int testSize() const;
+	/* allows the user to switch between several cost functions
+	   and data formats. */
+	void setDataType(const DataType& data_type);
+	void setCost(const CostFunction& cost_function);
 	/* Stochastic Gradient Descent algorithm, where `training_data` is a
 	 * vector of arrays containing the input and expected output, 
 	 * `epochs` the number of times we loop over the training data, 
@@ -48,7 +56,10 @@ public:
 	 * and `eta` the learning rate. 
 	 */
 	void SGD(int epochs, int batch_size, double eta=0.5, bool test=false);
-	double test(bool test_data=true) const;
+	/* test the network performance. If one doesn't have seperate test data
+	   provide `false` as an argument */
+	void test(bool test_data=true) const;
+	/* resets the weights and biases in the network to randomized state */ 
 	void resetNetwork();
 private:
 	std::vector<Matrix> weights_;

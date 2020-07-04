@@ -1,6 +1,6 @@
 #pragma once
 #include <eigen/Eigen/Dense>
-#include <cmath>
+#include <cmath>	// for exp
 
 using Vector = Eigen::VectorXd;
 
