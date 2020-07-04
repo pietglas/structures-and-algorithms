@@ -1,3 +1,5 @@
+// TODO: fix race condition in last for-loop SGD
+
 #include "forward-network.h"
 #include <algorithm>	// for std::random_shuffle
 #include <stdexcept>
@@ -54,6 +56,11 @@ int ForwardNetwork::testSize() const {
 	return data_->test_data_.size();
 }
 
+#pragma omp declare reduction (+: Eigen::MatrixXd: omp_out=omp_out+omp_in)\
+	initializer(omp_priv=Eigen::MatrixXd::Zero(omp_orig.rows(), omp_orig.cols()))
+#pragma omp declare reduction (+: Eigen::VectorXd: omp_out=omp_out+omp_in)\
+	initializer(omp_priv=Eigen::VectorXd::Zero(omp_orig.size()))
+
 void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 	// omp_set_num_threads(4);
 	for (int epoch = 0; epoch != epochs; ++epoch) {
@@ -104,9 +111,8 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 					Vector::Zero(biases_[lyr].size());
 				// parallelizing gives performance increase of about a
 				// 100% !
-				#pragma omp parallel for default(none) \
-					shared(weight_summand, bias_summand, lyr, batch_size, \
-						activations, delta)
+				#pragma omp parallel for default(shared) \
+					reduction(+: weight_summand, bias_summand)
 				for (int exb = 0; exb < batch_size; ++exb) {
 					weight_summand.noalias() += 
 						delta[exb][lyr] * (activations[exb][lyr].transpose());
