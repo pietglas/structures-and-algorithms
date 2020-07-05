@@ -12,9 +12,7 @@ using Vector = Eigen::VectorXd;
 
 int main()
 {
-	Vector vec1 = Vector::Ones(10);
-	vec1(4) = 2;
-	Vector::Index max_index;
-	double max_val = vec1.rowwise().sum().maxCoeff(&max_index);
-	std::cout << "Max value at index " << (int)max_index << std::endl;
+	unsigned char pixel = 244; 
+	double d_pixel = ((double)pixel) / 255;
+	std::cout << d_pixel << std::endl;
 }

@@ -45,13 +45,22 @@ void ReadMNist::readData(bool training) {
 		unsigned char pixel;
 		for (int j = 0; j != image_size; ++j) {
 			images >> pixel;
-			image(j) = ((int)pixel) / 255;
+			image(j) = /*((double)pixel) / 255*/pixel;
 		}
 		// read the corresponding label
 		unsigned char nr;
 		labels >> nr;
+		int index = nr;
+		if (i < 20) {
+			std::cerr << "index: " << index << std::endl;
+			for (int j = 1; j < image_size + 1; ++j) {
+				std::cerr << image(j-1) << " ";
+				if ((j % 28) == 0 && j != 0)
+					std::cerr << std::endl;
+			}
+		}
 		// set label at index nr equal to 1 
-		if (nr < 10) label((int)nr) = 1; 
+		nr < 10 ? label(index) = 1 : label(index - 1) = 1; 
 		// add the example to the stored data
 		data.get().emplace_back(image, label);
 	}
