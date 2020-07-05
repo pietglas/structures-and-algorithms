@@ -22,8 +22,8 @@ enum CostFunction {
 };
 
 enum DataType {
-	binary,
-	text
+	text,
+	mnist
 };
 
 /* Class that contains the data and methods for a neural network. The SGD
@@ -37,7 +37,11 @@ class ForwardNetwork {
 public:
 	ForwardNetwork(std::vector<int> layer_sizes, 
 		CostFunction cost_type=quadratic, DataType data_type=text);
-	void dataSource(const std::string& file, bool training) const;
+	/* set the data. If `training`, the source is assumed to be a
+	 * training set. If no file is provided, the data is set to 
+	 * the standard choice
+	 */ 
+	void data(bool training, const std::string& file=std::string(""));
 	/* returns the size of the dataset with training examples. Throws
 	   std::out_of_range if training data is not set */
 	int trainingSize() const;
@@ -58,7 +62,7 @@ public:
 	void SGD(int epochs, int batch_size, double eta=0.5, bool test=false);
 	/* test the network performance. If one doesn't have seperate test data
 	   provide `false` as an argument */
-	void test(bool test_data=true) const;
+	void test(bool test_data=true);
 	/* resets the weights and biases in the network to randomized state */ 
 	void resetNetwork();
 private:
@@ -68,12 +72,14 @@ private:
 	unique_ptr<Cost> cost_;
 	unique_ptr<ReadData> data_;
 	const int layers_;
+	std::string training_data_;
+	std::string test_data_;
 
 	void feedForward(std::vector<Vector>& activations,
 		std::vector<Vector>& w_inputs, int train_ex) const;
 	/* determines the deltas for each layer, using backpropagation */
 	void backProp(const std::vector<Vector>& activations, 
 		const std::vector<Vector>& w_inputs, std::vector<Vector>& delta, 
-		const Vector& output) const;
+		const Vector& expected) const;
 	void setWeightsBiasesRandom();
 };

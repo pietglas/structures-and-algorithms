@@ -26,10 +26,11 @@ ForwardNetwork::ForwardNetwork(std::vector<int> layer_sizes,
 	
 }
 
-void ForwardNetwork::dataSource(const std::string& file, 
-		bool training) const {
-	if (!file.empty()) 
+void ForwardNetwork::data(bool training, const std::string& file) {
+	if (!file.empty()) {
+		training ? training_data_ = file : test_data_ = file;
 		data_->read(file, training);	// read training data
+	}
 	else 
 		data_->readData(training);
 }
@@ -48,7 +49,7 @@ int ForwardNetwork::testSize() const {
 
 void ForwardNetwork::setDataType(const DataType& data_type) {
 	switch (data_type) {
-		case binary:
+		case mnist:
 			data_ = std::make_unique<ReadMNist>();
 			break;
 		default:
@@ -75,12 +76,17 @@ void ForwardNetwork::setCost(const CostFunction& cost_function) {
 	initializer(omp_priv=Eigen::VectorXd::Zero(omp_orig.size()))
 
 void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
-	// omp_set_num_threads(4);
 	for (int epoch = 0; epoch != epochs; ++epoch) {
 		std::cout << "current epoch: " << epoch << std::endl;
+		// std::cout << "bias second layer: " << biases_[0] << std::endl;
+		std::cout << "bias third layer: " << biases_[1] << std::endl;
+		// std::cout << "weights first layer: " << weights_[0] << std::endl;
+		// std::cout << "weights second layer: " << weights_[1] << std::endl;
 		// shuffle the data
-		std::random_shuffle(data_->training_data_.begin(), 
-			data_->training_data_.end());
+		std::random_device rd;
+		std::default_random_engine rng{rd()};
+		std::shuffle(std::begin(data_->training_data_), 
+			std::end(data_->training_data_), rng);
 		// divide the training data in batches of size batch_size
 		int nr_of_batches = data_->training_data_.size() / batch_size;
 		for (int batch = 0; batch != nr_of_batches; ++batch) {
@@ -139,29 +145,31 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 			// elapsed = finish - start;
 			// std::cout << "elapsed time sgd: " << elapsed.count() << std::endl;
 		}
-		if (test)
-			this->test(false);	// test on training data
+		if (test) {
+			this->test(true);	// test 
+		}
 	}
 }
 
-void ForwardNetwork::test(bool test_data) const {
+void ForwardNetwork::test(bool test_data) {
 	int correct_examples = 0;
 	auto data = std::ref(data_->training_data_);
 	int size = trainingSize();
 	if (test_data) {
+		if (data_->test_data_.empty())
+			this->data(false, test_data_);
 		size = testSize();
 		data = std::ref(data_->test_data_);
 	}
-	std::vector<std::vector<Vector>> activations(size);
-	std::vector<std::vector<Vector>> w_inputs(size);
 
 	#pragma omp parallel for default(shared) \
 		reduction(+: correct_examples)
 
 	for (int ex = 0; ex < size; ++ex) {
-		activations[ex].reserve(layers_);
-		w_inputs[ex].reserve(layers_ - 1);
-		feedForward(activations[ex], w_inputs[ex], ex);
+		std::vector<Vector> activations;
+		std::vector<Vector> w_inputs;
+
+		feedForward(activations, w_inputs, ex);
 		// output is correct when the largest value has the same index
 		// as the index of the expected output with value 1
 		Vector::Index max_index_exp;
@@ -169,7 +177,7 @@ void ForwardNetwork::test(bool test_data) const {
 		double max_val = 
 			data.get()[ex].second.rowwise().sum().maxCoeff(&max_index_exp);
 		max_val = 
-			activations[ex][layers_-1].rowwise().sum().maxCoeff(&max_index_out);
+			activations[layers_-1].rowwise().sum().maxCoeff(&max_index_out);
 		if (max_index_out == max_index_exp)
 			++correct_examples;
 	}
@@ -201,10 +209,10 @@ void ForwardNetwork::feedForward(std::vector<Vector>& activations,
 
 void ForwardNetwork::backProp(const std::vector<Vector>& activations, 
 		const std::vector<Vector>& w_inputs,
-		std::vector<Vector>& delta, const Vector& output) const {
+		std::vector<Vector>& delta, const Vector& expected) const {
 	delta.resize(layers_ - 1);
 	delta[layers_ - 2] = 
-		cost_->deltaOutput(activations[layers_-1], output,
+		cost_->deltaOutput(activations[layers_-1], expected,
 			w_inputs[layers_-2]
 		);
 	for (int lyr = layers_ - 3; lyr > -1; --lyr)
@@ -220,7 +228,7 @@ void ForwardNetwork::setWeightsBiasesRandom() {
 	for (int i = 0; i != layers_- 1; ++i) {
 		// set gaussian distribution with mean 0 and standard dev 1
 		std::random_device rd;
-		std::default_random_engine generator(rd());
+		std::default_random_engine generator{rd()};
 		std::normal_distribution<double> distribution{0, 1};
 		auto normal = [&] (double) {return distribution(generator);};
 		// initialize weights and biases randomly
