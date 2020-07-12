@@ -14,4 +14,6 @@ public:
 private:
 	int reverseInt(int i) const;
 	void readAndReverse(int& i, std::ifstream& stream) const;
+	std::vector<Vector> readLabel(bool training) const;
+	std::vector<Vector> readImage(bool training) const;
 };
