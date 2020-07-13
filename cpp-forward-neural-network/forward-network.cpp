@@ -76,16 +76,16 @@ void ForwardNetwork::setCost(const CostFunction& cost_function) {
 	initializer(omp_priv=Eigen::VectorXd::Zero(omp_orig.size()))
 
 void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
+	auto& data = data_->training_data_;
 	for (int epoch = 0; epoch != epochs; ++epoch) {
 		std::cout << "current epoch: " << epoch << std::endl;
 		// shuffle the data
 		std::random_device rd;
 		std::default_random_engine rng{rd()};
-		std::shuffle(std::begin(data_->training_data_), 
-			std::end(data_->training_data_), rng);
+		std::shuffle(std::begin(data), std::end(data), rng);
 		// divide the training data in batches of size batch_size
-		int nr_of_batches = data_->training_data_.size() / batch_size;
-		for (int batch = 0; batch != nr_of_batches; ++batch) {
+		int nr_batches = data.size() / batch_size;
+		for (int batch = 0; batch != nr_batches; ++batch) {
 			// for every training example in the batch, we have a vector
 			// of Vectors, where every Vector contains a layer of 
 			// activations/weighted inputs/deltas, respectively			
@@ -107,7 +107,7 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 			}			
 			// update weights and biases using (ch 1, 20), (ch 1, 21),
 			// (ch 2, BP3), (ch2, BP4)
-			double step = eta / batch_size;
+			double stepsize = eta / batch_size;
 			for (int lyr = weights_.size() - 1; lyr > -1; lyr--) {
 				Matrix weight_summand = 
 					Matrix::Zero(weights_[lyr].rows(), weights_[lyr].cols());
@@ -123,13 +123,12 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 						delta[exb][lyr] * (activations[exb][lyr].transpose());
 					bias_summand.noalias() += delta[exb][lyr];
 				}
-				weights_[lyr].noalias() -= step*weight_summand;
-				biases_[lyr].noalias() -= step*bias_summand; 
+				weights_[lyr].noalias() -= stepsize * weight_summand;
+				biases_[lyr].noalias() -= stepsize * bias_summand; 
 			}
 		}
-		if (test) {
+		if (test)
 			this->test(true);	// test 
-		}
 	}
 }
 
@@ -176,9 +175,6 @@ void ForwardNetwork::resetNetwork() {
 
 void ForwardNetwork::feedForward(std::vector<Vector>& activations,
 		std::vector<Vector>& w_inputs, int train_ex) const {
-	// reserve enough memory to prevent many resize operations
-	activations.reserve(layers_);
-	w_inputs.reserve(layers_-1);
 	// activate first layer
 	activations.emplace_back(data_->training_data_[train_ex].first);
 	// calculated weighted inputs and activations
@@ -206,8 +202,6 @@ void ForwardNetwork::backProp(const std::vector<Vector>& activations,
 }
 
 void ForwardNetwork::setWeightsBiasesRandom() {
-	biases_.reserve(layers_-1);
-	weights_.reserve(layers_-1);
 	for (int i = 0; i != layers_- 1; ++i) {
 		// set gaussian distribution with mean 0 and standard dev 1
 		std::random_device rd;

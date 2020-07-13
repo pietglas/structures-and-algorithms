@@ -7,7 +7,7 @@
 int main(int argc, char **argv) {
 	auto start = std::chrono::high_resolution_clock::now();
 	omp_set_num_threads(4);
-	std::vector sizes{784, 15, 10};
+	std::vector sizes{784, 25, 15, 10};
 	ForwardNetwork simple_nn{sizes, quadratic, mnist};
 	std::string data;
 	if (argc == 2) {
