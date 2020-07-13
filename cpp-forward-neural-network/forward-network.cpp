@@ -78,10 +78,6 @@ void ForwardNetwork::setCost(const CostFunction& cost_function) {
 void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 	for (int epoch = 0; epoch != epochs; ++epoch) {
 		std::cout << "current epoch: " << epoch << std::endl;
-		// std::cout << "bias second layer: " << biases_[0] << std::endl;
-		std::cout << "bias third layer: " << biases_[1] << std::endl;
-		// std::cout << "weights first layer: " << weights_[0] << std::endl;
-		// std::cout << "weights second layer: " << weights_[1] << std::endl;
 		// shuffle the data
 		std::random_device rd;
 		std::default_random_engine rng{rd()};
@@ -90,14 +86,9 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 		// divide the training data in batches of size batch_size
 		int nr_of_batches = data_->training_data_.size() / batch_size;
 		for (int batch = 0; batch != nr_of_batches; ++batch) {
-			// std::cout << "batch: " << batch << std::endl;
-			
 			// for every training example in the batch, we have a vector
 			// of Vectors, where every Vector contains a layer of 
-			// activations/weighted inputs/deltas, respectively
-			
-			// auto start = std::chrono::high_resolution_clock::now();
-			
+			// activations/weighted inputs/deltas, respectively			
 			std::vector<std::vector<Vector>> activations(batch_size);
 			std::vector<std::vector<Vector>> w_inputs(batch_size);
 			std::vector<std::vector<Vector>> delta(batch_size);
@@ -106,24 +97,18 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 			#pragma omp parallel for default(none) \
 				shared(activations, w_inputs, delta, batch_size, batch) \
 				schedule(guided)
+
 			for (int exb = 0; exb < batch_size; ++exb) {
 				// feedforward to calculate activations and weighted inputs
 				feedForward(activations[exb], w_inputs[exb], exb+batch_size*batch);
 				// determine deltas with backpropagation
 				backProp(activations[exb], w_inputs[exb],  
 					delta[exb], data_->training_data_[exb+batch_size*batch].second);
-			}
-			// auto finish = std::chrono::high_resolution_clock::now();
-			// std::chrono::duration<double> elapsed = finish - start;
-			// std::cout << "elapsed time feedforward & backprop: " << 
-			// 	elapsed.count() << std::endl;
-			
+			}			
 			// update weights and biases using (ch 1, 20), (ch 1, 21),
 			// (ch 2, BP3), (ch2, BP4)
-			
-			// start = std::chrono::high_resolution_clock::now();
 			double step = eta / batch_size;
-			for (int lyr = 0; lyr < layers_ - 1; ++lyr) {
+			for (int lyr = weights_.size() - 1; lyr > -1; lyr--) {
 				Matrix weight_summand = 
 					Matrix::Zero(weights_[lyr].rows(), weights_[lyr].cols());
 				Vector bias_summand = 
@@ -141,9 +126,6 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 				weights_[lyr].noalias() -= step*weight_summand;
 				biases_[lyr].noalias() -= step*bias_summand; 
 			}
-			// finish = std::chrono::high_resolution_clock::now();
-			// elapsed = finish - start;
-			// std::cout << "elapsed time sgd: " << elapsed.count() << std::endl;
 		}
 		if (test) {
 			this->test(true);	// test 
@@ -178,8 +160,9 @@ void ForwardNetwork::test(bool test_data) {
 			data.get()[ex].second.rowwise().sum().maxCoeff(&max_index_exp);
 		max_val = 
 			activations[layers_-1].rowwise().sum().maxCoeff(&max_index_out);
-		if (max_index_out == max_index_exp)
+		if (max_index_out == max_index_exp) {
 			++correct_examples;
+		}
 	}
 	std::cout << "number of correct examples: " << correct_examples <<
 		" / " << size << std::endl;

@@ -82,7 +82,7 @@ std::vector<Vector> ReadMNist::readImage(bool training) const {
 		Vector image(image_size);
 		// read an image
 		for (int j = 0; j < image_size; ++j) {
-			image(j) =  ((double)stored_chars[j + i*image_size]) / 255;
+			image(j) =  ((double)(stored_chars[j + i*image_size])) / 255;
 		}
 		stored_images.emplace_back(image);
 	}
