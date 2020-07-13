@@ -16,8 +16,8 @@ int main(int argc, char **argv) {
 	//std::cout << "eta this run: " << eta << std::endl;
 	simple_nn.data(true, data);
 	// std::cout << "eta this run: " << 0.05 << std::endl;
-	// simple_nn.SGD(10, 100, 0.5, true);
-	// simple_nn.resetNetwork();
+	simple_nn.SGD(10, 100, 0.5, true);
+	simple_nn.resetNetwork();
 	
 	auto finish = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsed = finish - start;

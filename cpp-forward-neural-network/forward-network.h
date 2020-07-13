@@ -66,12 +66,12 @@ public:
 	/* resets the weights and biases in the network to randomized state */ 
 	void resetNetwork();
 private:
+	const int layers_;
+	const std::vector<int> layer_sizes_;
 	std::vector<Matrix> weights_;
 	std::vector<Vector> biases_;
-	const std::vector<int> layer_sizes_;
 	unique_ptr<Cost> cost_;
 	unique_ptr<ReadData> data_;
-	const int layers_;
 	std::string training_data_;
 	std::string test_data_;
 
