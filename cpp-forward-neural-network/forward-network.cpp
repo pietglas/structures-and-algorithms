@@ -1,5 +1,3 @@
-// TODO: fix race condition in last for-loop SGD
-
 #include "forward-network.h"
 #include <algorithm>	// for std::random_shuffle
 #include <stdexcept>
@@ -77,11 +75,10 @@ void ForwardNetwork::setCost(const CostFunction& cost_function) {
 
 void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 	auto& data = data_->training_data_;
+	std::random_device rd;
+	std::default_random_engine rng{rd()};
 	for (int epoch = 0; epoch != epochs; ++epoch) {
-		std::cout << "current epoch: " << epoch << std::endl;
 		// shuffle the data
-		std::random_device rd;
-		std::default_random_engine rng{rd()};
 		std::shuffle(std::begin(data), std::end(data), rng);
 		// divide the training data in batches of size batch_size
 		int nr_batches = data.size() / batch_size;
@@ -128,7 +125,7 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 			}
 		}
 		if (test)
-			this->test(true);	// test 
+			this->test(false);	// test 
 	}
 }
 
