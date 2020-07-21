@@ -1,8 +1,8 @@
 #include "crossentropy-cost.h"
 
-Vector CrossEntropyCost::deltaOutput(const Vector& non_sigmoid_output,
+inline Vector CrossEntropyCost::deltaOutput(const Vector& non_sigmoid_output,
 		const Vector& output, const Vector& expected) {
-	return std::move(output - expected);
+	return output - expected;
 }
 
 // Currently the cost is not well defined (for output values equal

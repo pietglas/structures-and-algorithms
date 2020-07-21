@@ -79,7 +79,9 @@ private:
 		std::vector<Vector>& w_inputs, int train_ex) const;
 	/* determines the deltas for each layer, using backpropagation */
 	void backProp(const std::vector<Vector>& activations, 
-		const std::vector<Vector>& w_inputs, std::vector<Vector>& delta, 
-		const Vector& expected) const;
+		const std::vector<Vector>& w_inputs, 
+		std::vector<std::vector<Vector>>& nabla_b,
+		std::vector<std::vector<Matrix>>& nabla_w, 
+		int batch_ex, int train_ex) const;
 	void setWeightsBiasesRandom();
 };

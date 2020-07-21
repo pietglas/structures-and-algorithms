@@ -2,6 +2,7 @@
 
 #include "forward-network.h"
 #include <algorithm>	// for std::random_shuffle
+#include <numeric> // for std::accumulate
 #include <stdexcept>
 #include <iostream>
 #include <functional> // for std::ref
@@ -70,18 +71,18 @@ void ForwardNetwork::setCost(const CostFunction& cost_function) {
 // user defined reductions for Eigen vectors and matrices; prevents data
 // races when multithreading a for-loop in which a shared variable is 
 // modified
-#pragma omp declare reduction (+: Eigen::MatrixXd: omp_out=omp_out+omp_in)\
-	initializer(omp_priv=Eigen::MatrixXd::Zero(omp_orig.rows(), omp_orig.cols()))
-#pragma omp declare reduction (+: Eigen::VectorXd: omp_out=omp_out+omp_in)\
-	initializer(omp_priv=Eigen::VectorXd::Zero(omp_orig.size()))
+// #pragma omp declare reduction (+: Eigen::MatrixXd: omp_out=omp_out+omp_in)\
+// 	initializer(omp_priv=Eigen::MatrixXd::Zero(omp_orig.rows(), omp_orig.cols()))
+// #pragma omp declare reduction (+: Eigen::VectorXd: omp_out=omp_out+omp_in)\
+// 	initializer(omp_priv=Eigen::VectorXd::Zero(omp_orig.size()))
 
 void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 	auto& data = data_->training_data_;
+	std::random_device rd;
+	std::default_random_engine rng{rd()};
 	for (int epoch = 0; epoch != epochs; ++epoch) {
 		std::cout << "current epoch: " << epoch << std::endl;
 		// shuffle the data
-		std::random_device rd;
-		std::default_random_engine rng{rd()};
 		std::shuffle(std::begin(data), std::end(data), rng);
 		// divide the training data in batches of size batch_size
 		int nr_batches = data.size() / batch_size;
@@ -89,42 +90,43 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 			// for every training example in the batch, we have a vector
 			// of Vectors, where every Vector contains a layer of 
 			// activations/weighted inputs/deltas, respectively			
-			std::vector<std::vector<Vector>> activations(batch_size);
-			std::vector<std::vector<Vector>> w_inputs(batch_size);
-			std::vector<std::vector<Vector>> delta(batch_size);
+			std::vector<std::vector<Vector>> nabla_b(layers_-1);
+			std::vector<std::vector<Matrix>> nabla_w(layers_-1);
+			for (int lyr = 0; lyr < layers_-1; ++lyr) {
+				nabla_b[lyr].resize(batch_size);
+				nabla_w[lyr].resize(batch_size);
+			}
 			// for each training example, apply backpropagation. 
 			// parallelizing gives slight performance increase
 			#pragma omp parallel for default(none) \
-				shared(activations, w_inputs, delta, batch_size, batch) \
+				shared(nabla_w, nabla_b, batch_size, batch) \
 				schedule(guided)
 
 			for (int exb = 0; exb < batch_size; ++exb) {
+				std::vector<Vector> activations;
+				std::vector<Vector> w_inputs;
+				int current_ex = exb + batch_size*batch;
 				// feedforward to calculate activations and weighted inputs
-				feedForward(activations[exb], w_inputs[exb], exb+batch_size*batch);
+				feedForward(activations, w_inputs, current_ex);
 				// determine deltas with backpropagation
-				backProp(activations[exb], w_inputs[exb],  
-					delta[exb], data_->training_data_[exb+batch_size*batch].second);
+				backProp(activations, w_inputs, nabla_b,  
+					nabla_w, exb, current_ex);
 			}			
 			// update weights and biases using (ch 1, 20), (ch 1, 21),
 			// (ch 2, BP3), (ch2, BP4)
 			double stepsize = eta / batch_size;
-			for (int lyr = weights_.size() - 1; lyr > -1; lyr--) {
-				Matrix weight_summand = 
+			for (int lyr = weights_.size() - 1; lyr > -1; --lyr) {
+				Vector zerovec = Vector::Zero(biases_[lyr].size());
+				Matrix zeromat = 
 					Matrix::Zero(weights_[lyr].rows(), weights_[lyr].cols());
-				Vector bias_summand = 
-					Vector::Zero(biases_[lyr].size());
-				// parallelizing gives performance increase of about a
-				// 100% !
-				#pragma omp parallel for default(shared) \
-					reduction(+: weight_summand, bias_summand)
-
-				for (int exb = 0; exb < batch_size; ++exb) {
-					weight_summand.noalias() += 
-						delta[exb][lyr] * (activations[exb][lyr].transpose());
-					bias_summand.noalias() += delta[exb][lyr];
-				}
-				weights_[lyr].noalias() -= stepsize * weight_summand;
-				biases_[lyr].noalias() -= stepsize * bias_summand; 
+				Vector update_bias = 
+					std::accumulate(nabla_b[lyr].begin(), nabla_b[lyr].end(),
+					zerovec);
+				Matrix update_weight = 
+					std::accumulate(nabla_w[lyr].begin(), nabla_w[lyr].end(),
+					zeromat);
+				biases_[lyr].noalias() -= stepsize * update_bias; 
+				weights_[lyr].noalias() -= stepsize * update_weight;
 			}
 		}
 		if (test)
@@ -187,25 +189,32 @@ void ForwardNetwork::feedForward(std::vector<Vector>& activations,
 }
 
 void ForwardNetwork::backProp(const std::vector<Vector>& activations, 
-		const std::vector<Vector>& w_inputs,
-		std::vector<Vector>& delta, const Vector& expected) const {
-	delta.resize(layers_ - 1);
-	delta[layers_ - 2] = 
-		cost_->deltaOutput(activations[layers_-1], expected,
+		const std::vector<Vector>& w_inputs, 
+		std::vector<std::vector<Vector>>& nabla_b,
+		std::vector<std::vector<Matrix>>& nabla_w, 
+		int batch_ex, int train_ex) const {
+	auto& data = data_->training_data_;
+	Vector delta = 
+		cost_->deltaOutput(activations[layers_-1], data[train_ex].second,
 			w_inputs[layers_-2]
 		);
-	for (int lyr = layers_ - 3; lyr > -1; --lyr)
-		delta[lyr] = 
-			(weights_[lyr+1].transpose() * delta[lyr+1]).cwiseProduct( 
+	nabla_b[layers_-2][batch_ex] = delta;
+	nabla_w[layers_-2][batch_ex] = delta * (activations[layers_-2].transpose());
+	for (int lyr = layers_ - 3; lyr > -1; --lyr) {
+		delta = 
+			(weights_[lyr+1].transpose() * delta).cwiseProduct( 
 			sigmoidPrime(w_inputs[lyr])	// (ch2, BP2)
 		);
+		nabla_b[lyr][batch_ex] = delta;
+		nabla_w[lyr][batch_ex] = delta * (activations[lyr].transpose());
+	}
 }
 
 void ForwardNetwork::setWeightsBiasesRandom() {
+	std::random_device rd;
+	std::default_random_engine generator{rd()};
 	for (int i = 0; i != layers_- 1; ++i) {
 		// set gaussian distribution with mean 0 and standard dev 1
-		std::random_device rd;
-		std::default_random_engine generator{rd()};
 		std::normal_distribution<double> distribution{0, 1};
 		auto normal = [&] (double) {return distribution(generator);};
 		// initialize weights and biases randomly

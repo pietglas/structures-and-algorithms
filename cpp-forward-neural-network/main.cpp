@@ -6,17 +6,16 @@
 
 int main(int argc, char **argv) {
 	auto start = std::chrono::high_resolution_clock::now();
-	omp_set_num_threads(4);
-	std::vector sizes{784, 25, 15, 10};
+	// omp_set_num_threads(4);
+	std::vector sizes{784, 30, 10};
 	ForwardNetwork simple_nn{sizes, quadratic, mnist};
 	std::string data;
 	if (argc == 2) {
 		data = std::string{argv[1]};
 	}
-	//std::cout << "eta this run: " << eta << std::endl;
-	simple_nn.data(true, data);
-	// std::cout << "eta this run: " << 0.05 << std::endl;
-	simple_nn.SGD(10, 20, 3, true);
+	simple_nn.data(true, data);	// read train data
+	simple_nn.data(false, data);	// read test data
+	simple_nn.SGD(2, 20, 3, true);
 	simple_nn.resetNetwork();
 	
 	auto finish = std::chrono::high_resolution_clock::now();
