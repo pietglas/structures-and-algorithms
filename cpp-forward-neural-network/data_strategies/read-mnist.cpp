@@ -12,7 +12,7 @@ void ReadMNist::readData(bool training) {
 	std::vector<unsigned char> images = readImage(training);
 	std::vector<unsigned char> labels = readLabel(training);
 	int image_size = images.size() / labels.size();
-	for (int i = 0; i < labels.size(); i++) {
+	for (int i = 0; i < labels.size(); ++i) {
 		// convert chars to Eigen Vectors
 		Vector label = Vector::Zero(10);
 		label((int)labels[i]) = 1;

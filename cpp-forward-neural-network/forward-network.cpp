@@ -73,7 +73,8 @@ void ForwardNetwork::setCost(const CostFunction& cost_function) {
 #pragma omp declare reduction (+: Eigen::VectorXd: omp_out=omp_out+omp_in)\
 	initializer(omp_priv=Eigen::VectorXd::Zero(omp_orig.size()))
 
-void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
+void ForwardNetwork::SGD(int epochs, int batch_size, double eta,
+	bool test, bool test_data) {
 	auto& data = data_->training_data_;
 	std::random_device rd;
 	std::default_random_engine rng{rd()};
@@ -88,18 +89,19 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 			std::vector<std::vector<Vector>> activations(batch_size);
 			std::vector<std::vector<Vector>> w_inputs(batch_size);
 			std::vector<std::vector<Vector>> delta(batch_size);
-			 
+
 			// parallelizing gives slight performance increase
 			#pragma omp parallel for default(none) \
 				shared(activations, w_inputs, delta, batch_size, batch) \
 				schedule(guided)
 
 			for (int exb = 0; exb < batch_size; ++exb) {
+				int train_ex = exb + batch*batch_size;
 				// feedforward to calculate activations and weighted inputs
-				feedForward(activations[exb], w_inputs[exb], exb+batch_size*batch);
+				feedForward(activations[exb], w_inputs[exb], train_ex);
 				// determine deltas with backpropagation
 				backProp(activations[exb], w_inputs[exb],  
-					delta[exb], data_->training_data_[exb+batch_size*batch].second);
+					delta[exb], data_->training_data_[train_ex].second);
 			}			
 			// update weights and biases using (ch 1, 20), (ch 1, 21),
 			// (ch 2, BP3), (ch2, BP4)
@@ -123,8 +125,7 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 				biases_[lyr].noalias() -= stepsize * bias_summand; 
 			}
 		}
-		if (test)
-			this->test(false);	// test 
+		if (test) this->test(test_data);
 	}
 }
 
