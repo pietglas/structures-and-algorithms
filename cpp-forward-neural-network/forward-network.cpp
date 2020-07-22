@@ -83,13 +83,12 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 		// divide the training data in batches of size batch_size
 		int nr_batches = data.size() / batch_size;
 		for (int batch = 0; batch != nr_batches; ++batch) {
-			// for every training example in the batch, we have a vector
-			// of Vectors, where every Vector contains a layer of 
-			// activations/weighted inputs/deltas, respectively			
+			// for every training example in the batch, store a 
+			// vector with the activations/weighted inputs/deltas layers		
 			std::vector<std::vector<Vector>> activations(batch_size);
 			std::vector<std::vector<Vector>> w_inputs(batch_size);
 			std::vector<std::vector<Vector>> delta(batch_size);
-			// for each training example, apply backpropagation. 
+			 
 			// parallelizing gives slight performance increase
 			#pragma omp parallel for default(none) \
 				shared(activations, w_inputs, delta, batch_size, batch) \

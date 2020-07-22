@@ -7,17 +7,23 @@ void ReadMNist::read(const std::string& file_path, bool training) {}
 
 void ReadMNist::readData(bool training) {
 	auto data = std::ref(training_data_);
-	if (!training) {
+	if (!training) 
 		data = std::ref(test_data_);
-	}
-	std::vector<Vector> images = readImage(training);
-	std::vector<Vector> labels = readLabel(training);
-	for (int i = 0; i < images.size(); i++) {
-		data.get().emplace_back(images[i], labels[i]);
+	std::vector<unsigned char> images = readImage(training);
+	std::vector<unsigned char> labels = readLabel(training);
+	int image_size = images.size() / labels.size();
+	for (int i = 0; i < labels.size(); i++) {
+		// convert chars to Eigen Vectors
+		Vector label = Vector::Zero(10);
+		label((int)labels[i]) = 1;
+		Vector image(image_size);
+		for (int j = 0; j < image_size; ++j)
+			image(j) =  ((double)(images[j + i*image_size])) / 255;
+		data.get().emplace_back(image, label);
 	}
 }
 
-std::vector<Vector> ReadMNist::readLabel(bool training) const {
+std::vector<unsigned char> ReadMNist::readLabel(bool training) const {
 	std::string label_file{"train-labels-idx1-ubyte"};
 	if (!training) {
 		label_file = std::string("t10k-labels-idx1-ubyte");
@@ -25,67 +31,52 @@ std::vector<Vector> ReadMNist::readLabel(bool training) const {
 	std::ifstream labels(label_file, std::ios::binary);
 	if (!labels) {
 		std::cerr << "Couln't load label file" << std::endl;
-		return std::vector<Vector>();
+		return std::vector<unsigned char>();
 	}
 	int lab_magic_nr, nr_labels; 
 	readAndReverse(lab_magic_nr, labels);
 	if (lab_magic_nr != 2049) {
-		std::cerr << "wrong data set" << std::endl;
-		return std::vector<Vector>();
+		std::cerr << "This is not the label set!" << std::endl;
+		return std::vector<unsigned char>();
 	}
 	readAndReverse(nr_labels, labels);
-	std::vector<unsigned char> stored_chars;
-	std::vector<Vector> stored_labels;
-	stored_chars.reserve(nr_labels);
+	std::vector<unsigned char> stored_labels;
 	stored_labels.reserve(nr_labels);
-	stored_chars = std::vector<unsigned char>(
+	// read the data from the file
+	stored_labels = std::vector<unsigned char>(
 		(std::istreambuf_iterator<char>(labels)),
 		(std::istreambuf_iterator<char>())
 	);
-	for (int i = 0; i != nr_labels; i++) {
-		Vector label = Vector::Zero(10);
-		label((int)stored_chars[i]) = 1;
-		stored_labels.emplace_back(label);
-	}
 	return stored_labels;
 }
 
-std::vector<Vector> ReadMNist::readImage(bool training) const {
+std::vector<unsigned char> ReadMNist::readImage(bool training) const {
 	std::string image_file{"train-images-idx3-ubyte"};
-	if (!training) {
+	if (!training)
 		image_file = std::string("t10k-images-idx3-ubyte");
-	}
 	// load the data
 	std::ifstream images(image_file, std::ios::binary);
 	if (!images) {
 		std::cerr << "Couldn't load image file" << std::endl;
-		return std::vector<Vector>();
+		return std::vector<unsigned char>();
 	}
 	int im_magic_nr, nr_images, rows, cols;
 	readAndReverse(im_magic_nr, images);
 	if (im_magic_nr != 2051) {
-		std::cerr << "wrong data set" << std::endl;
-		return std::vector<Vector>();
+		std::cerr << "This is not the image set!" << std::endl;
+		return std::vector<unsigned char>();
 	}
 	readAndReverse(nr_images, images);
 	readAndReverse(rows, images);
 	readAndReverse(cols, images);
 	int image_size = rows * cols;
-	std::vector<unsigned char> stored_chars;
-	stored_chars.reserve(nr_images * image_size);
-	stored_chars = std::vector<unsigned char>(
+	std::vector<unsigned char> stored_images;
+	stored_images.reserve(nr_images * image_size);
+	// read the data from the file
+	stored_images = std::vector<unsigned char>(
 		(std::istreambuf_iterator<char>(images)),
 		(std::istreambuf_iterator<char>())
 	);
-	std::vector<Vector> stored_images;
-	for (int i = 0; i < nr_images; ++i) {
-		Vector image(image_size);
-		// read an image
-		for (int j = 0; j < image_size; ++j) {
-			image(j) =  ((double)(stored_chars[j + i*image_size])) / 255;
-		}
-		stored_images.emplace_back(image);
-	}
 	return stored_images;
 }
 
