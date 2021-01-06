@@ -2,4 +2,5 @@
 *lib
 *build
 *debug
+*.vscode
 
