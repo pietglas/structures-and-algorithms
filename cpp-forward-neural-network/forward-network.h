@@ -59,7 +59,7 @@ public:
 	 * backpropagation, where -1 indicates regular gradient descent,
 	 * and `eta` the learning rate. 
 	 */
-	void SGD(int epochs, int batch_size, double eta=0.5, bool test=false);
+	void SGD(int epochs, int batch_size, double eta=0.5, bool test=false, bool testdata=false);
 	/* test the network performance. If one doesn't have seperate test data
 	   provide `false` as an argument */
 	void test(bool test_data=true);

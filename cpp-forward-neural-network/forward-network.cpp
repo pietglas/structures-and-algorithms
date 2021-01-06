@@ -76,12 +76,11 @@ void ForwardNetwork::setCost(const CostFunction& cost_function) {
 // #pragma omp declare reduction (+: Eigen::VectorXd: omp_out=omp_out+omp_in)\
 // 	initializer(omp_priv=Eigen::VectorXd::Zero(omp_orig.size()))
 
-void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
+void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test, bool testdata) {
 	auto& data = data_->training_data_;
 	std::random_device rd;
 	std::default_random_engine rng{rd()};
 	for (int epoch = 0; epoch != epochs; ++epoch) {
-		std::cout << "current epoch: " << epoch << std::endl;
 		// shuffle the data
 		std::shuffle(std::begin(data), std::end(data), rng);
 		// divide the training data in batches of size batch_size
@@ -130,7 +129,7 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test) {
 			}
 		}
 		if (test)
-			this->test(true);	// test 
+			this->test(testdata);	// test 
 	}
 }
 
@@ -157,10 +156,10 @@ void ForwardNetwork::test(bool test_data) {
 		// as the index of the expected output with value 1
 		Vector::Index max_index_exp;
 		Vector::Index max_index_out;
-		double max_val = 
-			data.get()[ex].second.rowwise().sum().maxCoeff(&max_index_exp);
-		max_val = 
-			activations[layers_-1].rowwise().sum().maxCoeff(&max_index_out);
+		
+		data.get()[ex].second.rowwise().sum().maxCoeff(&max_index_exp);
+		activations[layers_-1].rowwise().sum().maxCoeff(&max_index_out);
+
 		if (max_index_out == max_index_exp) {
 			++correct_examples;
 		}
