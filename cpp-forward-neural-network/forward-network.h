@@ -16,6 +16,7 @@ using std::unique_ptr;
 using std::shared_ptr;
 using Vector = Eigen::VectorXd;
 using vecVectors = std::vector<Vector>;
+using vecMatrices = std::vector<Matrix>;
 
 enum CostFunction {
 	quadratic,

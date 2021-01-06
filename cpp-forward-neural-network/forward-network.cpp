@@ -10,11 +10,6 @@
 #include <chrono>
 #include <omp.h>
 
-using Matrix = Eigen::MatrixXd;
-using std::unique_ptr;
-using std::shared_ptr;
-using Vector = Eigen::VectorXd;
-
 ForwardNetwork::ForwardNetwork(std::vector<int> layer_sizes, 
 		CostFunction cost_type, DataType data_type) : 
 		layers_{layer_sizes.size()}, layer_sizes_{layer_sizes} {
@@ -80,26 +75,32 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test, bool
 	auto& data = data_->training_data_;
 	std::random_device rd;
 	std::default_random_engine rng{rd()};
+
+	// for every training example in the batch, we have a vector
+	// of Vectors, where every Vector contains a layer of 
+	// activations/weighted inputs/deltas, respectively	
+	std::vector<vecVectors> nabla_b(layers_-1);
+	std::vector<std::vector<Matrix>> nabla_w(layers_-1);
+	for (int lyr = 0; lyr < layers_-1; ++lyr) {
+		nabla_b[lyr].resize(batch_size);
+		nabla_w[lyr].resize(batch_size);
+	}
+	
+	vecVectors zerovecs;
+	vecMatrices zeromats;
+	for (int lyr = 0; lyr < weights_.size(); ++lyr) {
+		zerovecs.emplace_back(Vector::Zero(biases_[lyr].size()));
+		zeromats.emplace_back(Matrix::Zero(weights_[lyr].rows(), weights_[lyr].cols()));
+	}
+
 	for (int epoch = 0; epoch != epochs; ++epoch) {
 		// shuffle the data
 		std::shuffle(std::begin(data), std::end(data), rng);
 		// divide the training data in batches of size batch_size
 		int nr_batches = data.size() / batch_size;
+		
 		for (int batch = 0; batch != nr_batches; ++batch) {
-			// for every training example in the batch, we have a vector
-			// of Vectors, where every Vector contains a layer of 
-			// activations/weighted inputs/deltas, respectively			
-			std::vector<vecVectors> nabla_b(layers_-1);
-			std::vector<std::vector<Matrix>> nabla_w(layers_-1);
-			for (int lyr = 0; lyr < layers_-1; ++lyr) {
-				nabla_b[lyr].resize(batch_size);
-				nabla_w[lyr].resize(batch_size);
-			}
-			// for each training example, apply backpropagation. 
-			// parallelizing gives slight performance increase
-			#pragma omp parallel for default(none) \
-				shared(nabla_w, nabla_b, batch_size, batch) \
-				schedule(guided)
+			//auto start = std::chrono::high_resolution_clock::now();
 
 			for (int exb = 0; exb < batch_size; ++exb) {
 				vecVectors activations;
@@ -110,20 +111,26 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test, bool
 				// determine deltas with backpropagation
 				backProp(activations, w_inputs, nabla_b,  
 					nabla_w, exb, current_ex);
-			}			
+			}
+			// auto finish = std::chrono::high_resolution_clock::now();
+			// std::chrono::duration<double> elapsed = finish - start;
+			// std::cout << "elapsed time: " << elapsed.count() << std::endl;	
+
 			// update weights and biases using (ch 1, 20), (ch 1, 21),
 			// (ch 2, BP3), (ch2, BP4)
 			double stepsize = eta / batch_size;
-			for (int lyr = weights_.size() - 1; lyr > -1; --lyr) {
-				Vector zerovec = Vector::Zero(biases_[lyr].size());
-				Matrix zeromat = 
-					Matrix::Zero(weights_[lyr].rows(), weights_[lyr].cols());
 
+			//auto start1 = std::chrono::high_resolution_clock::now();
+			
+			for (int lyr = weights_.size() - 1; lyr > -1; --lyr) {
 				biases_[lyr].noalias() -= stepsize * std::accumulate(nabla_b[lyr].begin(), nabla_b[lyr].end(),
-				zerovec); 
+				zerovecs[lyr]); 
 				weights_[lyr].noalias() -= stepsize * std::accumulate(nabla_w[lyr].begin(), nabla_w[lyr].end(),
-				zeromat);
+				zeromats[lyr]);
 			}
+			// auto finish1 = std::chrono::high_resolution_clock::now();
+			// std::chrono::duration<double> elapsed1 = finish1 - start1;
+			// std::cout << "elapsed time: " << elapsed1.count() << std::endl;
 		}
 		if (test)
 			this->test(testdata);	// test 
@@ -142,7 +149,7 @@ void ForwardNetwork::test(bool test_data) {
 	}
 
 	#pragma omp parallel for default(shared) \
-		reduction(+: correct_examples)
+	 	reduction(+: correct_examples)
 
 	for (int ex = 0; ex < size; ++ex) {
 		vecVectors activations;

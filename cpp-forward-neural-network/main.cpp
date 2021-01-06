@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
 	}
 	simple_nn.data(true, data);	// read train data
 	simple_nn.data(false, data);	// read test data
-	simple_nn.SGD(2, 20, 3, true, false);
+	simple_nn.SGD(5, 20, 3, true, false);
 	simple_nn.resetNetwork();
 	
 	auto finish = std::chrono::high_resolution_clock::now();
