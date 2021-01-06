@@ -11,6 +11,8 @@ using Matrix = Eigen::MatrixXd;
 using std::unique_ptr;
 using std::shared_ptr;
 using Vector = Eigen::VectorXd;
+using vecVectors = std::vector<Vector>;
+using vecMatrices = std::vector<Matrix>;
 
 ForwardNetwork::ForwardNetwork(std::vector<int> layer_sizes, 
 		CostFunction cost_type, DataType data_type) : 
@@ -21,7 +23,6 @@ ForwardNetwork::ForwardNetwork(std::vector<int> layer_sizes,
 	this->setCost(cost_type);
 	// choose a read strategy
 	this->setDataType(data_type);
-	
 }
 
 void ForwardNetwork::data(bool training, const std::string& file) {
@@ -78,6 +79,8 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta,
 	auto& data = data_->training_data_;
 	std::random_device rd;
 	std::default_random_engine rng{rd()};
+	double stepsize = eta / batch_size;
+	
 	for (int epoch = 0; epoch != epochs; ++epoch) {
 		// shuffle the data
 		std::shuffle(std::begin(data), std::end(data), rng);
@@ -86,26 +89,27 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta,
 		for (int batch = 0; batch != nr_batches; ++batch) {
 			// for every training example in the batch, store a 
 			// vector with the activations/weighted inputs/deltas layers		
-			std::vector<std::vector<Vector>> activations(batch_size);
-			std::vector<std::vector<Vector>> w_inputs(batch_size);
-			std::vector<std::vector<Vector>> delta(batch_size);
+			std::vector<vecVectors> activations(batch_size);
+			std::vector<vecVectors> w_inputs(batch_size);
+			std::vector<vecVectors> delta(batch_size);			
 
+			int train_ex = batch * batch_size;
 			// parallelizing gives slight performance increase
 			#pragma omp parallel for default(none) \
 				shared(activations, w_inputs, delta, batch_size, batch) \
+				reduction(+: train_ex) \
 				schedule(guided)
 
 			for (int exb = 0; exb < batch_size; ++exb) {
-				int train_ex = exb + batch*batch_size;
 				// feedforward to calculate activations and weighted inputs
 				feedForward(activations[exb], w_inputs[exb], train_ex);
 				// determine deltas with backpropagation
 				backProp(activations[exb], w_inputs[exb],  
 					delta[exb], data_->training_data_[train_ex].second);
+				++train_ex;
 			}			
 			// update weights and biases using (ch 1, 20), (ch 1, 21),
 			// (ch 2, BP3), (ch2, BP4)
-			double stepsize = eta / batch_size;
 			for (int lyr = weights_.size() - 1; lyr > -1; lyr--) {
 				Matrix weight_summand = 
 					Matrix::Zero(weights_[lyr].rows(), weights_[lyr].cols());
@@ -138,24 +142,35 @@ void ForwardNetwork::test(bool test_data) {
 			this->data(false, test_data_);
 		size = testSize();
 		data = std::ref(data_->test_data_);
+
+		/*
+		for (auto& pair : data.get()) {
+			std::cerr << "label: " << pair.second << std::endl;
+			for (int j = 1; j < pair.first.size(); ++j) {
+				std::cerr << pair.first[j-1] << " ";
+				if (j % 28 == 0)
+					std::cout << std::endl;
+			}
+		}
+		*/
 	}
 
 	#pragma omp parallel for default(shared) \
 		reduction(+: correct_examples)
 
 	for (int ex = 0; ex < size; ++ex) {
-		std::vector<Vector> activations;
-		std::vector<Vector> w_inputs;
+		vecVectors activations;
+		vecVectors w_inputs;
 
 		feedForward(activations, w_inputs, ex);
 		// output is correct when the largest value has the same index
 		// as the index of the expected output with value 1
 		Vector::Index max_index_exp;
 		Vector::Index max_index_out;
-		double max_val = 
-			data.get()[ex].second.rowwise().sum().maxCoeff(&max_index_exp);
-		max_val = 
-			activations[layers_-1].rowwise().sum().maxCoeff(&max_index_out);
+
+		data.get()[ex].second.rowwise().sum().maxCoeff(&max_index_exp);
+		activations[layers_-1].rowwise().sum().maxCoeff(&max_index_out);
+
 		if (max_index_out == max_index_exp) {
 			++correct_examples;
 		}
@@ -171,7 +186,7 @@ void ForwardNetwork::resetNetwork() {
 }
 
 void ForwardNetwork::feedForward(std::vector<Vector>& activations,
-		std::vector<Vector>& w_inputs, int train_ex) const {
+		vecVectors& w_inputs, int train_ex) const {
 	// activate first layer
 	activations.emplace_back(data_->training_data_[train_ex].first);
 	// calculated weighted inputs and activations
@@ -183,9 +198,9 @@ void ForwardNetwork::feedForward(std::vector<Vector>& activations,
 	}
 }
 
-void ForwardNetwork::backProp(const std::vector<Vector>& activations, 
-		const std::vector<Vector>& w_inputs,
-		std::vector<Vector>& delta, const Vector& expected) const {
+void ForwardNetwork::backProp(const vecVectors& activations, 
+		const vecVectors& w_inputs,
+		vecVectors& delta, const Vector& expected) const {
 	delta.resize(layers_ - 1);
 	delta[layers_ - 2] = 
 		cost_->deltaOutput(activations[layers_-1], expected,

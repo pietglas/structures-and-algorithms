@@ -15,6 +15,8 @@ using Matrix = Eigen::MatrixXd;
 using std::unique_ptr;
 using std::shared_ptr;
 using Vector = Eigen::VectorXd;
+using vecVectors = std::vector<Vector>;
+using vecMatrices = std::vector<Matrix>;
 
 enum CostFunction {
 	quadratic,
@@ -69,18 +71,18 @@ public:
 private:
 	const int layers_;
 	const std::vector<int> layer_sizes_;
-	std::vector<Matrix> weights_;
-	std::vector<Vector> biases_;
+	vecMatrices weights_;
+	vecVectors biases_;
 	unique_ptr<Cost> cost_;
 	unique_ptr<ReadData> data_;
 	std::string training_data_;
 	std::string test_data_;
 
-	void feedForward(std::vector<Vector>& activations,
-		std::vector<Vector>& w_inputs, int train_ex) const;
+	void feedForward(vecVectors& activations,
+		vecVectors& w_inputs, int train_ex) const;
 	/* determines the deltas for each layer, using backpropagation */
-	void backProp(const std::vector<Vector>& activations, 
-		const std::vector<Vector>& w_inputs, std::vector<Vector>& delta, 
+	void backProp(const vecVectors& activations, 
+		const vecVectors& w_inputs, vecVectors& delta, 
 		const Vector& expected) const;
 	void setWeightsBiasesRandom();
 };

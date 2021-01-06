@@ -11,6 +11,7 @@ void ReadMNist::readData(bool training) {
 		data = std::ref(test_data_);
 	std::vector<unsigned char> images = readImage(training);
 	std::vector<unsigned char> labels = readLabel(training);
+	data.get().reserve(labels.size());
 	int image_size = images.size() / labels.size();
 	for (int i = 0; i < labels.size(); ++i) {
 		// convert chars to Eigen Vectors
