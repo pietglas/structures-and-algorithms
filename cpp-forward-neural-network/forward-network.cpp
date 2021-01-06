@@ -102,15 +102,17 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test, bool
 		for (int batch = 0; batch != nr_batches; ++batch) {
 			//auto start = std::chrono::high_resolution_clock::now();
 
+			int current_ex = batch_size * batch;
 			for (int exb = 0; exb < batch_size; ++exb) {
 				vecVectors activations;
 				vecVectors w_inputs;
-				int current_ex = exb + batch_size*batch;
+
 				// feedforward to calculate activations and weighted inputs
 				feedForward(activations, w_inputs, current_ex);
 				// determine deltas with backpropagation
 				backProp(activations, w_inputs, nabla_b,  
 					nabla_w, exb, current_ex);
+				++current_ex;
 			}
 			// auto finish = std::chrono::high_resolution_clock::now();
 			// std::chrono::duration<double> elapsed = finish - start;
@@ -121,7 +123,7 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test, bool
 			double stepsize = eta / batch_size;
 
 			//auto start1 = std::chrono::high_resolution_clock::now();
-			
+
 			for (int lyr = weights_.size() - 1; lyr > -1; --lyr) {
 				biases_[lyr].noalias() -= stepsize * std::accumulate(nabla_b[lyr].begin(), nabla_b[lyr].end(),
 				zerovecs[lyr]); 
