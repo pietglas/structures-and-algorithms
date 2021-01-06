@@ -6,7 +6,7 @@
 
 int main(int argc, char **argv) {
 	auto start = std::chrono::high_resolution_clock::now();
-	// omp_set_num_threads(4);
+	omp_set_num_threads(4);
 	std::vector<int> sizes{784, 100, 10};
 	ForwardNetwork simple_nn{sizes, quadratic, mnist};
 	std::string data;
@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
 	}
 	simple_nn.data(true, data);	// read train data
 	simple_nn.data(false, data);	// read test data
-	simple_nn.SGD(20, 20, 3, true, false);
+	simple_nn.SGD(2, 20, 3, true, false);
 	simple_nn.resetNetwork();
 	
 	auto finish = std::chrono::high_resolution_clock::now();

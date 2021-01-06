@@ -8,7 +8,7 @@
 #include <functional> // for std::ref
 #include <random>
 #include <chrono>
-//#include <omp.h>
+#include <omp.h>
 
 using Matrix = Eigen::MatrixXd;
 using std::unique_ptr;
@@ -89,7 +89,7 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test, bool
 			// for every training example in the batch, we have a vector
 			// of Vectors, where every Vector contains a layer of 
 			// activations/weighted inputs/deltas, respectively			
-			std::vector<std::vector<Vector>> nabla_b(layers_-1);
+			std::vector<vecVectors> nabla_b(layers_-1);
 			std::vector<std::vector<Matrix>> nabla_w(layers_-1);
 			for (int lyr = 0; lyr < layers_-1; ++lyr) {
 				nabla_b[lyr].resize(batch_size);
@@ -102,8 +102,8 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test, bool
 				schedule(guided)
 
 			for (int exb = 0; exb < batch_size; ++exb) {
-				std::vector<Vector> activations;
-				std::vector<Vector> w_inputs;
+				vecVectors activations;
+				vecVectors w_inputs;
 				int current_ex = exb + batch_size*batch;
 				// feedforward to calculate activations and weighted inputs
 				feedForward(activations, w_inputs, current_ex);
@@ -118,14 +118,11 @@ void ForwardNetwork::SGD(int epochs, int batch_size, double eta, bool test, bool
 				Vector zerovec = Vector::Zero(biases_[lyr].size());
 				Matrix zeromat = 
 					Matrix::Zero(weights_[lyr].rows(), weights_[lyr].cols());
-				Vector update_bias = 
-					std::accumulate(nabla_b[lyr].begin(), nabla_b[lyr].end(),
-					zerovec);
-				Matrix update_weight = 
-					std::accumulate(nabla_w[lyr].begin(), nabla_w[lyr].end(),
-					zeromat);
-				biases_[lyr].noalias() -= stepsize * update_bias; 
-				weights_[lyr].noalias() -= stepsize * update_weight;
+
+				biases_[lyr].noalias() -= stepsize * std::accumulate(nabla_b[lyr].begin(), nabla_b[lyr].end(),
+				zerovec); 
+				weights_[lyr].noalias() -= stepsize * std::accumulate(nabla_w[lyr].begin(), nabla_w[lyr].end(),
+				zeromat);
 			}
 		}
 		if (test)
@@ -148,8 +145,8 @@ void ForwardNetwork::test(bool test_data) {
 		reduction(+: correct_examples)
 
 	for (int ex = 0; ex < size; ++ex) {
-		std::vector<Vector> activations;
-		std::vector<Vector> w_inputs;
+		vecVectors activations;
+		vecVectors w_inputs;
 
 		feedForward(activations, w_inputs, ex);
 		// output is correct when the largest value has the same index
@@ -169,13 +166,13 @@ void ForwardNetwork::test(bool test_data) {
 }
 
 void ForwardNetwork::resetNetwork() {
-	biases_ = std::vector<Vector>();
+	biases_ = vecVectors();
 	weights_ = std::vector<Matrix>();
 	setWeightsBiasesRandom();
 }
 
-void ForwardNetwork::feedForward(std::vector<Vector>& activations,
-		std::vector<Vector>& w_inputs, int train_ex) const {
+void ForwardNetwork::feedForward(vecVectors& activations,
+		vecVectors& w_inputs, int train_ex) const {
 	// activate first layer
 	activations.emplace_back(data_->training_data_[train_ex].first);
 	// calculated weighted inputs and activations
@@ -187,9 +184,9 @@ void ForwardNetwork::feedForward(std::vector<Vector>& activations,
 	}
 }
 
-void ForwardNetwork::backProp(const std::vector<Vector>& activations, 
-		const std::vector<Vector>& w_inputs, 
-		std::vector<std::vector<Vector>>& nabla_b,
+void ForwardNetwork::backProp(const vecVectors& activations, 
+		const vecVectors& w_inputs, 
+		std::vector<vecVectors>& nabla_b,
 		std::vector<std::vector<Matrix>>& nabla_w, 
 		int batch_ex, int train_ex) const {
 	auto& data = data_->training_data_;
